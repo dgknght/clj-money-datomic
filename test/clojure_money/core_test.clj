@@ -14,8 +14,9 @@
     conn))
 
 ;; After I save an account, it appears in the list of all accounts
-(expect #{["Checking"]}
-  (with-redefs [conn (create-empty-db)]
-    (do
-      (add-account "Checking")
-      (all-accounts))))
+(expect ["Checking"]
+        (in
+          (with-redefs [conn (create-empty-db)]
+            (do
+              (add-account "Checking")
+              (all-accounts)))))
