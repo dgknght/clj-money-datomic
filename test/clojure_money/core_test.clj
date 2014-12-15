@@ -1,5 +1,5 @@
 (ns clojure-money.core-test
-  (:require [clojure.test :refer :all]
+  (:require [expectations :refer :all]
             [clojure-money.core :refer :all]
             [datomic.api :as d :refer :all]))
 
@@ -13,9 +13,9 @@
     (d/transact conn schema)
     conn))
 
-(deftest a-saved-account-can-be-retrieved
+;; After I save an account, it appears in the list of all accounts
+(expect #{["Checking"]}
   (with-redefs [conn (create-empty-db)]
-    (testing "After I save an account, I can retrieve it"
+    (do
       (add-account "Checking")
-      (printf "all-accounts returns %s\n" (all-accounts))
-      (is (= [["Checking"]] (all-accounts))))))
+      (all-accounts))))
