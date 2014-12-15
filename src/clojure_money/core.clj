@@ -9,7 +9,7 @@
 
 (defn add-account
   "Saves an account to the database"
-  ([account-name] (add-account account-name "asset"))
+  ([account-name] (add-account account-name :account.type/asset))
   ([account-name account-type]
    (let [new-id (d/tempid :db.part/user)]
      @(d/transact
@@ -23,8 +23,9 @@
   []
   (d/q
     '[:find [?account-name ?account-type]
-      :where [_ :account/name ?account-name]
-             [_ :account/type ?account-type]]
+      :where [?e :account/name ?account-name]
+             [?e :account/type ?t]
+             [?t :db/ident ?account-type]]
     (d/db conn)))
 
 (defn find-account-by-path

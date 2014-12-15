@@ -7,7 +7,18 @@
 
  {:db/id #db/id[:db.part/db]
   :db/ident :account/type
-  :db/valueType :db.type/string
+  :db/valueType :db.type/ref
   :db/cardinality :db.cardinality/one
   :db/doc "The type of the account (asset, liability, equity, income, or expense)"
-  :db.install/_attribute :db.part/db}]
+  :db.install/_attribute :db.part/db}
+ 
+ {:db/id #db/id[:db.part/user]
+  :db/ident :account.type/asset}
+ {:db/id #db/id[:db.part/user]
+  :db/ident :account.type/liability}
+ {:db/id #db/id[:db.part/user]
+  :db/ident :account.type/equity}
+ {:db/id #db/id[:db.part/user]
+  :db/ident :account.type/income}
+ {:db/id #db/id[:db.part/user]
+  :db/ident :account.type/expense}]
