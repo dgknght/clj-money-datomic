@@ -3,12 +3,7 @@
   (:gen-class))
 
 ;TODO Move this to a separate file
-(def schema [{:db/id (d/tempid :db.part/db)
-              :db/ident :account/name
-              :db/valueType :db.type/string
-              :db/cardinality :db.cardinality/one
-              :db/doc "The name of the account"
-              :db.install/_attribute :db.part/db}])
+(def schema (load-file "resources/datomic/schema.edn"))
 
 (def conn nil)
 
