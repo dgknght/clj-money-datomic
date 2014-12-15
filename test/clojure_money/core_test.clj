@@ -14,9 +14,15 @@
     conn))
 
 ;; After I save an account, it appears in the list of all accounts
-(expect ["Checking"]
-        (in
-          (with-redefs [conn (create-empty-db)]
-            (do
-              (add-account "Checking")
-              (all-accounts)))))
+(expect ["Checking" "asset"]
+        (with-redefs [conn (create-empty-db)]
+          (do
+            (add-account "Checking")
+            (all-accounts))))
+
+;; An account can be an asset, liability, equity, income, or expense
+(expect ["Checking" "liability"]
+        (with-redefs [conn (create-empty-db)]
+          (do
+            (add-account "Checking" "liability")
+            (all-accounts))))
