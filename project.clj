@@ -8,4 +8,5 @@
                  [expectations "2.0.13"]]
   :main ^:skip-aot clojure-money.core
   :target-path "target/%s"
-  :profiles {:uberjar {:aot :all}})
+  :profiles {:uberjar {:aot :all}}
+  :plugins [[lein-expectations "0.0.7"]])
