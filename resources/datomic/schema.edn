@@ -21,4 +21,51 @@
  {:db/id #db/id[:db.part/user]
   :db/ident :account.type/income}
  {:db/id #db/id[:db.part/user]
-  :db/ident :account.type/expense}]
+  :db/ident :account.type/expense}
+
+ {:db/id #db/id[:db.part/db]
+  :db/ident :transaction/date
+  :db/valueType :db.type/instant
+  :db/cardinality :db.cardinality/one
+  :db/doc "The date on which the transaction ocurred"
+  :db.install/_attribute :db.part/db}
+
+ {:db/id #db/id[:db.part/db]
+  :db/ident :transaction/description
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one
+  :db/doc "The user's description of the transaction"
+  :db.install/_attribute :db.part/db}
+
+ {:db/id #db/id[:db.part/db]
+  :db/ident :transaction/items
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/many
+  :db/doc "The items that make up the transaction"
+  :db.install/_attribute :db.part/db}
+
+ {:db/id #db/id[:db.part/db]
+  :db/ident :transaction-item/account
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/one
+  :db/doc "The account affected by this transaction item"
+  :db.install/_attribute :db.part/db}
+
+ {:db/id #db/id[:db.part/db]
+  :db/ident :transaction-item/action
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/one
+  :db/doc "The account action (debit or credit)"
+  :db.install/_attribute :db.part/db}
+
+ {:db/id #db/id[:db.part/user]
+  :db/ident :transaction-item.action/debit}
+ {:db/id #db/id[:db.part/user]
+  :db/ident :transaction-item.action/credit}
+
+ {:db/id #db/id[:db.part/db]
+  :db/ident :transaction-item/amount
+  :db/valueType :db.type/bigdec
+  :db/cardinality :db.cardinality/one
+  :db/doc "The amount of currency in the transaction item"
+  :db.install/_attribute :db.part/db}]

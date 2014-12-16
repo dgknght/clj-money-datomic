@@ -1,0 +1,48 @@
+(ns clojure-money.transactions
+  (:require [datomic.api :as d :refer :all]
+            [clojure-money.core :refer :all]
+            [clojure-money.accounts :refer :all])
+  (:gen-class))
+
+;; ----- Primary methods -----
+
+(defn get-transactions
+  "Returns the transactions in the specified timeframe"
+  [start-date end-date]
+  (let [db (d/db conn)]
+    (->> (d/q
+           '[:find ?t
+             :in $ ?start-date ?end-date
+             :where [?t :transaction/date ?transaction-date]
+             [(> ?transaction-date ?start-date)]
+             [(< ?transaction-date ?end-date)]]
+           db
+           start-date
+           end-date)
+         (map first)
+         (pull-many db '[*]))))
+
+(declare transaction-items->tx-data)
+(defn add-transaction
+  "Adds a new transaction to the system"
+  [transaction-date description items]
+  (let [new-id (d/tempid :db.part/user)
+        items-tx-data (transaction-items->tx-data items)]
+    @(d/transact
+       conn
+       [{:db/id new-id
+         :transaction/date transaction-date
+         :transaction/description description
+         :transaction/items items-tx-data}])))
+
+;; ----- Helper methods -----
+
+(defn transaction-items->tx-data
+  "Converts the raw transaction item input data into something suitable for a transact invocation"
+  [items]
+  (apply vector (map
+       (fn [[action account-name amount]] {:db/id (d/tempid :db.part/user)
+          :transaction-item/account (first (find-account-by-path account-name))
+          :transaction-item/action action
+          :transaction-item/amount amount})
+       items)))

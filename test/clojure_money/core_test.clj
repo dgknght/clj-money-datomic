@@ -12,4 +12,3 @@
   (let [conn (d/connect uri)]
     (d/transact conn schema)
     conn))
-

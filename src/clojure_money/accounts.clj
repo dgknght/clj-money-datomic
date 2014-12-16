@@ -27,7 +27,12 @@
 (defn find-account-by-path
   "Finds an account with the specified path"
   [path]
-  (d/pull (d/db conn) '[*] [:account/name path]))
+  (d/q
+    '[:find [?a]
+      :in $ ?account-name
+      :where [?a :account/name ?account-name]]
+    (d/db conn)
+    path))
 
 (defn -main
   "I don't do a whole lot ... yet."
