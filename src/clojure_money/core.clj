@@ -22,9 +22,9 @@
   "Returns all of the accounts in the system"
   []
   (d/q
-    '[:find [?account-name ?account-type]
-      :where [?e :account/name ?account-name]
-             [?e :account/type ?t]
+    '[:find ?account-name ?account-type
+      :where [?a :account/name ?account-name]
+             [?a :account/type ?t]
              [?t :db/ident ?account-type]]
     (d/db conn)))
 
