@@ -6,6 +6,7 @@
 
 ;; ----- Primary methods -----
 
+(declare resolve-transactions-enums)
 (defn get-transactions
   "Returns the transactions in the specified timeframe"
   [start-date end-date]
@@ -20,7 +21,8 @@
            start-date
            end-date)
          (map first)
-         (pull-many db '[*]))))
+         (pull-many db '[*])
+         resolve-transactions-enums)))
 
 (declare transaction-items->tx-data)
 (defn add-transaction
@@ -46,3 +48,33 @@
           :transaction-item/action action
           :transaction-item/amount amount})
        items)))
+
+(defn resolve-action
+  "Looks up a transaction item action from a db/id"
+  [db action]
+  :transaction-item.action/debit)
+
+(defn resolve-transaction-item-enums
+  "Looks up references in a list of transaction item maps"
+  [db item]
+  (assoc item
+         :transaction-item/action (resolve-action db (:transaction-item/action item))))
+
+(defn resolve-transaction-items-enums
+  "Looks up references in a list of transaction items"
+  [db items]
+  (map #(resolve-transaction-item-enums db %) items))
+
+(defn resolve-transaction-enums
+  "Looks up references in transaction map"
+  [db transaction]
+  (assoc transaction
+         :transaction/items (resolve-transaction-items-enums
+                              db
+                              (:transaction/items transaction))))
+
+(defn resolve-transactions-enums
+  "Looks up references in a list of transaction maps"
+  [transactions]
+  (let [db (d/db conn)]
+    (map #(resolve-transaction-enums db %) transactions)))

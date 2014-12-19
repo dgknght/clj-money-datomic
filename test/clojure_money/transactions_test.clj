@@ -9,7 +9,8 @@
 (expect (more-> #datetime "2014-12-15" :transaction/date
                 "Paycheck" :transaction/description
                 (bigdec 1000) (-> :transaction/items first :transaction-item/amount)
-                :transaction-item.action/debit (-> :transaction/items first :transaction-item/action))
+                :transaction-item.action/debit (-> :transaction/items first :transaction-item/action)
+                :transaction-item.action/credit (-> :transaction/items second :transaction-item/action))
         (with-redefs [conn (create-empty-db)]
           (do
             (add-account "Checking" :account.type/asset)
