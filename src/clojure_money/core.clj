@@ -10,3 +10,12 @@
   "Parses a string and returns the date value"
   [s]
   (read-string (str "#inst \"" s "\"")))
+
+(defn get-ident
+  "Returns the identifier for the database entity with the specified id"
+  [db id]
+  (first (d/q '[:find [?ident]
+                :in $ ?id
+                :where [?id :db/ident ?ident]]
+              db,
+              id)))

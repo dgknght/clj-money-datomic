@@ -52,7 +52,7 @@
 (defn resolve-action
   "Looks up a transaction item action from a db/id"
   [db action]
-  :transaction-item.action/debit)
+  (get-ident db (:db/id action)))
 
 (defn resolve-transaction-item-enums
   "Looks up references in a list of transaction item maps"
