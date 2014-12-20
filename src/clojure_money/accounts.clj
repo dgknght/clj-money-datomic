@@ -33,8 +33,3 @@
       :where [?a :account/name ?account-name]]
     (d/db conn)
     path))
-
-(defn -main
-  "I don't do a whole lot ... yet."
-  [& args]
-  (println "Hello, World!"))
