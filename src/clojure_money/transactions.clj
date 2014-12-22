@@ -25,9 +25,12 @@
          resolve-transactions-enums)))
 
 (declare transaction-items->tx-data)
+(declare valid-transaction-data?)
 (defn add-transaction
   "Adds a new transaction to the system"
   [transaction-date description items]
+  (if-not (valid-transaction-data? transaction-date description items)
+    (throw (IllegalArgumentException. "The transaction data is not valid."))) ; TODO add details about the invalid data
   (let [new-id (d/tempid :db.part/user)
         items-tx-data (transaction-items->tx-data items)]
     @(d/transact
@@ -78,3 +81,27 @@
   [transactions]
   (let [db (d/db conn)]
     (map #(resolve-transaction-enums db %) transactions)))
+
+(defn item-total
+  "returns the total of the credit actions"
+  [action items]
+  (->> items
+       (clojure.core/filter #(= action (first %)))
+       (map last)
+       (reduce +)))
+
+(defn credit-debit-balanced?
+  "Returns a boolean value indicating whether or not the credit and debit totals are equal in the specified items"
+  [items]
+  (let [credit-total (item-total :transaction-item.action/credit items)
+        debit-total (item-total :transaction-item.action/debit items)]
+    (= credit-total debit-total)))
+
+(defn valid-transaction-data?
+  "Returns a boolean value indicating whether or not the transaction data is valid"
+  [transaction-date description items]
+  (cond
+    (nil? transaction-date) false
+    (nil? description) false
+    (not (credit-debit-balanced? items)) false
+    :else true))
