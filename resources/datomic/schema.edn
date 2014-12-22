@@ -1,3 +1,4 @@
+  ;; Accounts
 [{:db/id #db/id[:db.part/db]
   :db/ident :account/name
   :db/valueType :db.type/string
@@ -24,6 +25,15 @@
   :db/ident :account.type/expense}
 
  {:db/id #db/id[:db.part/db]
+  :db/ident :account/balance
+  :db/valueType :db.type/bigdec
+  :db/cardinality :db.cardinality/one
+  :db/doc "The current balance of the account"
+  :db.install/_attribute :db.part/db}
+
+  ;; Transactions
+
+ {:db/id #db/id[:db.part/db]
   :db/ident :transaction/date
   :db/valueType :db.type/instant
   :db/cardinality :db.cardinality/one
@@ -44,6 +54,8 @@
   :db/cardinality :db.cardinality/many
   :db/doc "The items that make up the transaction"
   :db.install/_attribute :db.part/db}
+
+ ;; Transaction Items
 
  {:db/id #db/id[:db.part/db]
   :db/ident :transaction-item/account

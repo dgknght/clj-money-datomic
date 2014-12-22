@@ -31,4 +31,33 @@
                              "Paycheck"
                              [[:transaction-item.action/debit "Checking" (bigdec 1000)]
                               [:transaction-item.action/credit "Salary" (bigdec 500)]]))))
-;; When I add a transaction, it should affect the balance of the referenced accounts
+
+;; When I debit an asset account, the balance should increase
+(expect 1000
+        (with-redefs [conn (create-empty-db)]
+          (do
+            (add-account "Checking" :account.type/asset)
+            (add-account "Salary" :account.type/income)
+            (add-transaction #datetime "2014-12-15"
+                             "Paycheck"
+                             [[:transaction-item.action/debit "Checking" (bigdec 1000)]
+                              [:transaction-item.action/credit "Salary" (bigdec 1000)]])
+            (get-balance "Checking"))))
+
+;; When I credit an asset account, the balance should decrease
+
+;; When I debit a liability account, the balance should decrease
+
+;; When I credit a liability account, the balance should increase
+
+;; When I debit an equity account, the balance should decrease
+
+;; When I credit an equity account, the balance should increase
+
+;; When I debit an income account, the balance should decrease
+
+;; When I credit an income account, the balance should increase
+
+;; When I debit an expense account, the balance should increase
+
+;; When I credit an expense account, the balance should descease
