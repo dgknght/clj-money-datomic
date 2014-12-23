@@ -5,12 +5,17 @@
             [clojure-money.core-test :refer [create-empty-db]]))
 
 ;; After I save an account, it appears in the list of all accounts
-(expect #{["Checking" :account.type/asset]}
+(expect (more-> "Checking" :account/name
+                :account.type/asset :account/type
+                (bigdec 0) :account/balance)
         (with-redefs [conn (create-empty-db)]
           (do
             (add-account "Checking")
-            (all-accounts))))
-(expect #{["Checking" :account.type/asset] ["Savings" :account.type/asset]}
+            (first (all-accounts)))))
+
+(expect (more-> 2 count
+                "Checking" (-> first :account/name)
+                "Savings" (-> second :account/name))
         (with-redefs [conn (create-empty-db)]
           (do
             (add-account "Checking")
@@ -18,7 +23,7 @@
             (all-accounts))))
 
 ;; An account can be an asset, liability, equity, income, or expense
-(expect #{["Credit card" :account.type/liability]}
+(expect (more-> 1 count)
         (with-redefs [conn (create-empty-db)]
           (do
             (add-account "Credit card" :account.type/liability)
@@ -28,10 +33,3 @@
           (do
             (add-account "Checking" "notatype")
             (all-accounts))))
-
-;; The balance should be zero for a new account
-(expect (bigdec 0)
-        (with-redefs [conn (create-empty-db)]
-          (do
-              (add-account "Checking")
-              (get-balance "Checking"))))

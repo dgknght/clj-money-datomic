@@ -18,12 +18,13 @@
 (defn all-accounts
   "Returns all of the accounts in the system"
   []
-  (d/q
-    '[:find ?account-name ?account-type
-      :where [?a :account/name ?account-name]
-             [?a :account/type ?t]
-             [?t :db/ident ?account-type]]
-    (d/db conn)))
+  (let [db (d/db conn)]
+    (->> (d/q
+           '[:find ?a
+             :where [?a :account/name]]
+           db)
+         (map #(d/entity db (first %)))
+         (map #(d/touch %)))))
 
 (defn find-account-by-path
   "Finds an account with the specified path"
