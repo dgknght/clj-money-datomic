@@ -28,3 +28,10 @@
           (do
             (add-account "Checking" "notatype")
             (all-accounts))))
+
+;; The balance should be zero for a new account
+(expect (bigdec 0)
+        (with-redefs [conn (create-empty-db)]
+          (do
+              (add-account "Checking")
+              (get-balance "Checking"))))
