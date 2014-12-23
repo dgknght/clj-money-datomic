@@ -42,6 +42,12 @@
   (let [id (find-account-by-path path)]
     @(d/transact conn [[:db/add id :account/balance amount]])))
 
+(defn credit-account
+  "Debits the specified account"
+  [path amount]
+  (let [id (find-account-by-path path)]
+    @(d/transact conn [[:db/add id :account/balance (- (bigdec 0) amount)]])))
+
 (defn get-balance
   "Gets the balance for the specified account"
   [path]

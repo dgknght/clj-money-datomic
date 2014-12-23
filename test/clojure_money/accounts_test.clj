@@ -34,6 +34,13 @@
             (add-account "Checking" "notatype")
             (all-accounts))))
 
+;;                  Debit     Credit
+;; Asset            Increase  Decrease
+;; Liability        Decrease  Increase
+;; Income/Revenue   Decrease  Increase
+;; Expense          Increase  Decrease
+;; Equity/Capital   Decrease  Increase
+
 ;; debiting an asset account increases the balance
 (expect (bigdec 100)
         (with-redefs [conn (create-empty-db)]
@@ -41,3 +48,27 @@
               (add-account "Checking")
               (debit-account "Checking" (bigdec 100))
               (get-balance "Checking"))))
+
+;; crediting an asset account decreases the balance
+(expect (bigdec -100)
+        (with-redefs [conn (create-empty-db)]
+          (do
+              (add-account "Checking")
+              (credit-account "Checking" (bigdec 100))
+              (get-balance "Checking"))))
+
+;; debiting an expense account increases the balance
+(expect (bigdec 100)
+        (with-redefs [conn (create-empty-db)]
+          (do
+              (add-account "Rent" :account.type/expense)
+              (debit-account "Rent" (bigdec 100))
+              (get-balance "Rent"))))
+
+;; crediting an expense account decreases the balance
+(expect (bigdec -100)
+        (with-redefs [conn (create-empty-db)]
+          (do
+              (add-account "Rent" :account.type/expense)
+              (credit-account "Rent" (bigdec 100))
+              (get-balance "Rent"))))
