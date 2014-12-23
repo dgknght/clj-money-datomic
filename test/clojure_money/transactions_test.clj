@@ -33,7 +33,8 @@
                               [:transaction-item.action/credit "Salary" (bigdec 500)]]))))
 
 ;; When I debit an asset account, the balance should increase
-(expect 1000
+;; When I credit an income account, the balance should increase
+(expect [(bigdec 1000) (bigdec 1000)]
         (with-redefs [conn (create-empty-db)]
           (do
             (add-account "Checking" :account.type/asset)
@@ -42,7 +43,7 @@
                              "Paycheck"
                              [[:transaction-item.action/debit "Checking" (bigdec 1000)]
                               [:transaction-item.action/credit "Salary" (bigdec 1000)]])
-            (get-balance "Checking"))))
+            [(get-balance "Checking") (get-balance "Salary")])))
 
 ;; When I credit an asset account, the balance should decrease
 
@@ -56,7 +57,6 @@
 
 ;; When I debit an income account, the balance should decrease
 
-;; When I credit an income account, the balance should increase
 
 ;; When I debit an expense account, the balance should increase
 
