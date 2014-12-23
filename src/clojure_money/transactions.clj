@@ -47,7 +47,7 @@
   [items]
   (apply vector (map
        (fn [[action account-name amount]] {:db/id (d/tempid :db.part/user)
-          :transaction-item/account (first (find-account-by-path account-name))
+          :transaction-item/account (find-account-by-path account-name)
           :transaction-item/action action
           :transaction-item/amount amount})
        items)))

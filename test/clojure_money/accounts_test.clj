@@ -33,3 +33,11 @@
           (do
             (add-account "Checking" "notatype")
             (all-accounts))))
+
+;; debiting an asset account increases the balance
+(expect (bigdec 100)
+        (with-redefs [conn (create-empty-db)]
+          (do
+              (add-account "Checking")
+              (debit-account "Checking" (bigdec 100))
+              (get-balance "Checking"))))

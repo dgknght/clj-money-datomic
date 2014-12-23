@@ -29,12 +29,18 @@
 (defn find-account-by-path
   "Finds an account with the specified path"
   [path]
-  (d/q
-    '[:find [?a]
-      :in $ ?account-name
-      :where [?a :account/name ?account-name]]
-    (d/db conn)
-    path))
+  (first (d/q
+           '[:find [?a]
+             :in $ ?account-name
+             :where [?a :account/name ?account-name]]
+           (d/db conn)
+           path)))
+
+(defn debit-account
+  "Debits the specified account"
+  [path amount]
+  (let [id (find-account-by-path path)]
+    @(d/transact conn [[:db/add id :account/balance amount]])))
 
 (defn get-balance
   "Gets the balance for the specified account"
