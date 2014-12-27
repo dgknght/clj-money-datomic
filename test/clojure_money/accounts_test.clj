@@ -124,3 +124,35 @@
               (add-account "Credit card" :account.type/liability)
               (credit-account "Credit card" (bigdec 100))
               (get-balance "Credit card"))))
+
+;; debiting an equity account decreases the balance
+(expect (bigdec -100)
+        (with-redefs [conn (create-empty-db)]
+          (do
+              (add-account "Opening balances" :account.type/equity)
+              (debit-account "Opening balances" (bigdec 100))
+              (get-balance "Opening balances"))))
+
+;; crediting an equity account increases the balance
+(expect (bigdec 100)
+        (with-redefs [conn (create-empty-db)]
+          (do
+              (add-account "Opening balances" :account.type/equity)
+              (credit-account "Opening balances" (bigdec 100))
+              (get-balance "Opening balances"))))
+
+;; debiting an income account decreases the balance
+(expect (bigdec -100)
+        (with-redefs [conn (create-empty-db)]
+          (do
+              (add-account "Salary" :account.type/income)
+              (debit-account "Salary" (bigdec 100))
+              (get-balance "Salary"))))
+
+;; crediting an income account increases the balance
+(expect (bigdec 100)
+        (with-redefs [conn (create-empty-db)]
+          (do
+              (add-account "Salary" :account.type/income)
+              (credit-account "Salary" (bigdec 100))
+              (get-balance "Salary"))))
