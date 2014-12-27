@@ -22,6 +22,13 @@
             (add-account "Savings")
             (all-accounts))))
 
+;; I can retrieve and account by path (name, prepended by the name of any parents)
+(expect (more-> "Checking" :account/name)
+        (with-redefs [conn (create-empty-db)]
+          (do
+            (add-account "Checking")
+            (find-account-by-path "Checking"))))
+
 ;; An account can be an asset, liability, equity, income, or expense
 (expect (more-> 1 count)
         (with-redefs [conn (create-empty-db)]
@@ -33,6 +40,35 @@
           (do
             (add-account "Checking" "notatype")
             (all-accounts))))
+
+; Assets and expenses accounts are "left-side" of the equation A = L + E
+(expect true
+        (with-redefs [conn (create-empty-db)]
+          (do
+            (add-account "Checking" :account.type/asset)
+            (left-side? (find-account-by-path "Checking")))))
+(expect true
+        (with-redefs [conn (create-empty-db)]
+          (do
+            (add-account "Rent" :account.type/expense)
+            (left-side? (find-account-by-path "Rent")))))
+
+; Liability, equity, and income accounts are "right-side" of the equation A = L + E
+(expect true
+        (with-redefs [conn (create-empty-db)]
+          (do
+            (add-account "Credit card" :account.type/liability)
+            (right-side? (find-account-by-path "Credit card")))))
+(expect true
+        (with-redefs [conn (create-empty-db)]
+          (do
+            (add-account "Opening balances" :account.type/equity)
+            (right-side? (find-account-by-path "Opening balances")))))
+(expect true
+        (with-redefs [conn (create-empty-db)]
+          (do
+            (add-account "Salary" :account.type/income)
+            (right-side? (find-account-by-path "Salary")))))
 
 ;;                  Debit     Credit
 ;; Asset            Increase  Decrease
@@ -72,3 +108,19 @@
               (add-account "Rent" :account.type/expense)
               (credit-account "Rent" (bigdec 100))
               (get-balance "Rent"))))
+
+;; debiting a liability account decreases the balance
+(expect (bigdec -100)
+        (with-redefs [conn (create-empty-db)]
+          (do
+              (add-account "Credit card" :account.type/liability)
+              (debit-account "Credit card" (bigdec 100))
+              (get-balance "Credit card"))))
+
+;; crediting a liability account increases the balance
+(expect (bigdec 100)
+        (with-redefs [conn (create-empty-db)]
+          (do
+              (add-account "Credit card" :account.type/liability)
+              (credit-account "Credit card" (bigdec 100))
+              (get-balance "Credit card"))))
