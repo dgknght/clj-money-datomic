@@ -34,17 +34,17 @@
 
 ;; When I debit an asset account, the balance should increase
 ;; When I credit an income account, the balance should increase
-;(expect [(bigdec 1000) (bigdec 1000)]
-;        (with-redefs [conn (create-empty-db)]
-;          (do
-;            (add-account "Checking" :account.type/asset)
-;            (add-account "Salary" :account.type/income)
-;            (add-transaction #datetime "2014-12-15"
-;                             "Paycheck"
-;                             [[:transaction-item.action/debit "Checking" (bigdec 1000)]
-;                              [:transaction-item.action/credit "Salary" (bigdec 1000)]])
-;            [(get-balance "Checking") (get-balance "Salary")])))
-;
+(expect [(bigdec 1000) (bigdec 1000)]
+        (with-redefs [conn (create-empty-db)]
+          (do
+            (add-account "Checking" :account.type/asset)
+            (add-account "Salary" :account.type/income)
+            (add-transaction #datetime "2014-12-15"
+                             "Paycheck"
+                             [[:transaction-item.action/debit "Checking" (bigdec 1000)]
+                              [:transaction-item.action/credit "Salary" (bigdec 1000)]])
+            [(get-balance "Checking") (get-balance "Salary")])))
+
 ;; When I credit an asset account, the balance should decrease
 
 ;; When I debit a liability account, the balance should decrease
