@@ -3,8 +3,8 @@
             [clojure-money.core :refer [conn]])
   (:gen-class))
 
-(def left-side-types [:account.type/asset :account.type/expense])
-(def right-side-types [:account.type/liability :account.type/equity :account.type/income])
+(def left-side-types #{:account.type/asset :account.type/expense})
+(def right-side-types #{:account.type/liability :account.type/equity :account.type/income})
 
 (defn add-account
   "Saves an account to the database"
@@ -58,8 +58,7 @@
 (defn left-side?
   "Returns true if the account is asset or expense, otherwise false"
   [account]
-  (let [type (:account/type account)]
-    (some #(= type %) left-side-types)))
+  (contains? left-side-types (:account/type account)))
 
 (defn right-side?
   "Returns true if the account is liability, equity or income, otherwise false"
