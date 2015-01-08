@@ -4,7 +4,9 @@
 
 (def schema (load-file "resources/datomic/schema.edn"))
 
-(def conn nil)
+(def uri "datomic:free://localhost:4334/money")
+
+(def conn (d/connect uri))
 
 (defn str->date-time
   "Parses a string and returns the date value"
@@ -21,6 +23,9 @@
               id)))
 
 (defn -main
-  "I don't do a whole lot ... yet."
+  "main entry point for the application"
   [& args]
-  (println "Hello, World!"))
+  (when (= 'init-database' (first args))
+    (d/create-database uri)
+    (let [c (d/connect uri)]
+      (d/transact c schema))))
