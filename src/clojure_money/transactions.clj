@@ -42,15 +42,24 @@
 
 ;; ----- Helper methods -----
 
+(defn resolve-account
+  "Resolves the information into an account id. The input may be a path, account entity, or id"
+  [conn token]
+  (cond (string? token) (find-account-by-path conn token)
+        (integer? token) (d/entity (d/db conn) token)
+        :else token))
+
 (defn transaction-items->tx-data
   "Converts the raw transaction item input data into something suitable for a transact invocation"
   [conn items]
   (apply vector (map
-       (fn [[action account-name amount]] {:db/id (d/tempid :db.part/user)
-          :transaction-item/account (find-account-id-by-path conn account-name)
-          :transaction-item/action action
-          :transaction-item/amount amount})
-       items)))
+                  (fn [[action account-name amount]]
+                    (let [account (resolve-account conn account-name)]
+                      {:db/id (d/tempid :db.part/user)
+                       :transaction-item/account (:db/id account)
+                       :transaction-item/action action
+                       :transaction-item/amount amount}))
+                  items)))
 
 (defn resolve-action
   "Looks up a transaction item action from a db/id"
