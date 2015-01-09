@@ -1,5 +1,5 @@
 (ns clojure-money.accounts
-  (:require [datomic.api :as d :refer :all])
+  (:require [datomic.api :as d :refer [transact q db]])
   (:gen-class))
 
 (def left-side-types #{:account.type/asset :account.type/expense})
