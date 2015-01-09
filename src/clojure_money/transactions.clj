@@ -24,21 +24,17 @@
          (pull-many db '[*])
          (resolve-transactions-enums conn))))
 
-(declare transaction-items->tx-data)
+(declare resolve-transaction-data)
 (declare valid-transaction-data?)
 (defn add-transaction
   "Adds a new transaction to the system"
-  [conn transaction-date description items]
-  (if-not (valid-transaction-data? transaction-date description items)
+  [conn data]
+  (when-not (valid-transaction-data? data)
     (throw (IllegalArgumentException. "The transaction data is not valid."))) ; TODO add details about the invalid data
   (let [new-id (d/tempid :db.part/user)
-        items-tx-data (transaction-items->tx-data conn items)]
-    @(d/transact
-       conn
-       [{:db/id new-id
-         :transaction/date transaction-date
-         :transaction/description description
-         :transaction/items items-tx-data}])))
+        resolved-data (resolve-transaction-data conn data)
+        complete-data (merge {:db/id new-id} resolved-data)]
+    @(d/transact conn [complete-data])))
 
 ;; ----- Helper methods -----
 
@@ -49,17 +45,15 @@
         (integer? token) (d/entity (d/db conn) token)
         :else token))
 
-(defn transaction-items->tx-data
-  "Converts the raw transaction item input data into something suitable for a transact invocation"
-  [conn items]
-  (apply vector (map
-                  (fn [[action account-name amount]]
-                    (let [account (resolve-account conn account-name)]
-                      {:db/id (d/tempid :db.part/user)
-                       :transaction-item/account (:db/id account)
-                       :transaction-item/action action
-                       :transaction-item/amount amount}))
-                  items)))
+(defn resolve-transaction-item-data
+  "Resolves references inside transaction item data"
+  [conn data]
+  (assoc-in data [:transaction-item/account] (:db/id (resolve-account conn (:transaction-item/account data)))))
+
+(defn resolve-transaction-data
+  "Resolves references inside transaction data"
+  [conn data]
+  (assoc-in data [:transaction/items] (map #(resolve-transaction-item-data conn %) (:transaction/items data))))
 
 (defn resolve-action
   "Looks up a transaction item action from a db/id"
@@ -92,11 +86,11 @@
     (map #(resolve-transaction-enums db %) transactions)))
 
 (defn item-total
-  "returns the total of the credit actions"
+  "returns the total of the debit or credit actions"
   [action items]
   (->> items
-       (clojure.core/filter #(= action (first %)))
-       (map last)
+       (clojure.core/filter #(= action (:transaction-item/action %)))
+       (map :transaction-item/amount)
        (reduce +)))
 
 (defn credit-debit-balanced?
@@ -108,7 +102,7 @@
 
 (defn valid-transaction-data?
   "Returns a boolean value indicating whether or not the transaction data is valid"
-  [transaction-date description items]
+  [{transaction-date :transaction/date description :transaction/description items :transaction/items}]
   (cond
     (nil? transaction-date) false
     (nil? description) false
