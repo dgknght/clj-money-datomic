@@ -8,8 +8,6 @@
 
 (def uri (:datomic-uri settings))
 
-(def conn (d/connect uri))
-
 (defn str->date-time
   "Parses a string and returns the date value"
   [s]

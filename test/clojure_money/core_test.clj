@@ -4,11 +4,11 @@
             [datomic.api :as d :refer [delete-database create-database transact]]))
 
 ;TODO Need to figoure out how to handle different URIs for different environments
-(def uri "datomic:mem://money")
+(def test-uri "datomic:mem://money")
 
 (defn create-empty-db []
-  (d/delete-database uri)
-  (d/create-database uri)
-  (let [conn (d/connect uri)]
+  (d/delete-database test-uri)
+  (d/create-database test-uri)
+  (let [conn (d/connect test-uri)]
     (d/transact conn schema)
     conn))

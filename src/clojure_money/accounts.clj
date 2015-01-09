@@ -1,6 +1,5 @@
 (ns clojure-money.accounts
-  (:require [datomic.api :as d :refer :all]
-            [clojure-money.core :refer [conn]])
+  (:require [datomic.api :as d :refer :all])
   (:gen-class))
 
 (def left-side-types #{:account.type/asset :account.type/expense})
@@ -8,8 +7,8 @@
 
 (defn add-account
   "Saves an account to the database"
-  ([account-name] (add-account account-name :account.type/asset))
-  ([account-name account-type]
+  ([conn account-name] (add-account conn account-name :account.type/asset))
+  ([conn account-name account-type]
    (let [new-id (d/tempid :db.part/user)]
      @(d/transact
         conn
@@ -20,7 +19,7 @@
 
 (defn all-accounts
   "Returns all of the accounts in the system"
-  []
+  [conn]
   (let [db (d/db conn)]
     (->> (d/q
            '[:find ?a
@@ -31,7 +30,7 @@
 
 (defn find-account-by-path
   "Finds an account with the specified path"
-  [path]
+  [conn path]
   (let [db  (d/db conn)]
     (->> path
          (d/q
@@ -45,7 +44,7 @@
 
 (defn find-account-id-by-path
   "Finds an account with the specified path"
-  [path]
+  [conn path]
   (let [db  (d/db conn)]
     (->> path
          (d/q
@@ -75,25 +74,25 @@
 
 (defn adjust-balance
   "Adjusts the balance of an account"
-  [path amount action]
-  (let [account (find-account-by-path path)
+  [conn path amount action]
+  (let [account (find-account-by-path conn path)
         pol (polarizer account action)
         polarized-amount (* pol amount)]
     @(d/transact conn [[:db/add (:db/id account) :account/balance polarized-amount]])))
 
 (defn debit-account
   "Debits the specified account"
-  [path amount]
-  (adjust-balance path amount :transaction-item.action/debit))
+  [conn path amount]
+  (adjust-balance conn path amount :transaction-item.action/debit))
 
 (defn credit-account
   "Debits the specified account"
-  [path amount]
-  (adjust-balance path amount :transaction-item.action/credit))
+  [conn path amount]
+  (adjust-balance conn path amount :transaction-item.action/credit))
 
 (defn get-balance
   "Gets the balance for the specified account"
-  [path]
+  [conn path]
   (first (d/q
            '[:find [?balance]
              :in $ ?account-name
