@@ -4,7 +4,9 @@
 
 (def schema (load-file "resources/datomic/schema.edn"))
 
-(def uri "datomic:free://localhost:4334/money")
+(def settings (load-file "config/settings.edn"))
+
+(def uri (:datomic-uri settings))
 
 (def conn (d/connect uri))
 
