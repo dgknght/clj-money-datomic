@@ -1,5 +1,5 @@
 (ns clojure-money.transactions
-  (:require [datomic.api :as d :refer :all]
+  (:require [datomic.api :as d :refer [tempid q db transact pull-many]]
             [clojure-money.core :refer :all]
             [clojure-money.accounts :refer :all])
   (:gen-class))
