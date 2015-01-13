@@ -91,11 +91,10 @@
 
 (defn get-balance
   "Gets the balance for the specified account"
-  [conn path]
+  [conn id]
   (first (d/q
            '[:find [?balance]
-             :in $ ?account-name
-             :where [?a :account/name ?account-name]
-                    [?a :account/balance ?balance]]
+             :in $ ?a
+             :where [?a :account/balance ?balance]]
            (d/db conn)
-           path)))
+           id)))

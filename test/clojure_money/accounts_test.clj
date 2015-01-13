@@ -72,7 +72,7 @@
           (add-account conn "Checking")
           (let [id (find-account-id-by-path conn "Checking")]
             (debit-account conn id (bigdec 100))
-            (get-balance conn "Checking"))))
+            (get-balance conn id))))
 
 ;; crediting an asset account decreases the balance
 (expect (bigdec -100)
@@ -80,7 +80,7 @@
           (add-account conn "Checking")
           (let [id (find-account-id-by-path conn "Checking")]
             (credit-account conn id (bigdec 100))
-            (get-balance conn "Checking"))))
+            (get-balance conn id))))
 
 ;; debiting an expense account increases the balance
 (expect (bigdec 100)
@@ -88,7 +88,7 @@
             (add-account conn "Rent" :account.type/expense)
           (let [id (find-account-id-by-path conn "Rent")]
             (debit-account conn id (bigdec 100))
-            (get-balance conn "Rent"))))
+            (get-balance conn id))))
 
 ;; crediting an expense account decreases the balance
 (expect (bigdec -100)
@@ -96,7 +96,7 @@
           (add-account conn "Rent" :account.type/expense)
           (let [id (find-account-id-by-path conn "Rent")]
             (credit-account conn id (bigdec 100))
-            (get-balance conn "Rent"))))
+            (get-balance conn id))))
 
 ;; debiting a liability account decreases the balance
 (expect (bigdec -100)
@@ -104,7 +104,7 @@
           (add-account conn "Credit card" :account.type/liability)
           (let [id (find-account-id-by-path conn "Credit card")]
             (debit-account conn id (bigdec 100))
-            (get-balance conn "Credit card"))))
+            (get-balance conn id))))
 
 ;; crediting a liability account increases the balance
 (expect (bigdec 100)
@@ -112,7 +112,7 @@
           (add-account conn "Credit card" :account.type/liability)
           (let [id (find-account-id-by-path conn "Credit card")]
             (credit-account conn id (bigdec 100))
-            (get-balance conn "Credit card"))))
+            (get-balance conn id))))
 
 ;; debiting an equity account decreases the balance
 (expect (bigdec -100)
@@ -120,7 +120,7 @@
           (add-account conn "Opening balances" :account.type/equity)
           (let [id (find-account-id-by-path conn "Opening balances")]
             (debit-account conn id (bigdec 100))
-            (get-balance conn "Opening balances"))))
+            (get-balance conn id))))
 
 ;; crediting an equity account increases the balance
 (expect (bigdec 100)
@@ -128,7 +128,7 @@
           (add-account conn "Opening balances" :account.type/equity)
           (let [id (find-account-id-by-path conn "Opening balances")]
             (credit-account conn id (bigdec 100))
-            (get-balance conn "Opening balances"))))
+            (get-balance conn id))))
 
 ;; debiting an income account decreases the balance
 (expect (bigdec -100)
@@ -136,7 +136,7 @@
           (add-account conn "Salary" :account.type/income)
           (let [id (find-account-id-by-path conn "Salary")]
             (debit-account conn id (bigdec 100))
-            (get-balance conn "Salary"))))
+            (get-balance conn id))))
 
 ;; crediting an income account increases the balance
 (expect (bigdec 100)
@@ -144,4 +144,4 @@
           (add-account conn "Salary" :account.type/income)
           (let [id (find-account-id-by-path conn "Salary")]
             (credit-account conn id (bigdec 100))
-            (get-balance conn "Salary"))))
+            (get-balance conn id))))
