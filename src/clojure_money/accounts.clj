@@ -2,9 +2,6 @@
   (:require [datomic.api :as d :refer [transact q db]])
   (:gen-class))
 
-(def left-side-types #{:account.type/asset :account.type/expense})
-(def right-side-types #{:account.type/liability :account.type/equity :account.type/income})
-
 (defn add-account
   "Saves an account to the database"
   ([conn account-name] (add-account conn account-name :account.type/asset))
@@ -54,41 +51,43 @@
              db)
          first)))
 
-(defn left-side?
-  "Returns true if the account is asset or expense, otherwise false"
-  [account]
-  (contains? left-side-types (:account/type account)))
+(def left-side?
+  (d/function '{:lang :clojure
+                :params [account]
+                :code (contains?
+                        #{:account.type/asset :account.type/expense}
+                        (:account/type account))}))
 
-(defn right-side?
-  "Returns true if the account is liability, equity or income, otherwise false"
-  [account]
-  (not (left-side? account)))
+(def right-side?
+  (d/function '{:lang :clojure
+                :params [account]
+                :code (not (clojure-money.accounts/left-side? account))}))
 
-(defn polarizer
-  "Return -1 or 1, by which a transaction amount can be multiplied to affect an account balance based on the account type and action (credit or debit)"
-  [account action]
-  (if (or (and (left-side? account) (= :transaction-item.action/debit action))
-          (and (right-side? account) (= :transaction-item.action/credit action)))
-    1
-    -1))
+(def polarizer
+  (d/function '{:lang :clojure
+                :params [account action]
+                :code (if (or (and (clojure-money.accounts/left-side? account) (= :transaction-item.action/debit action))
+                              (and (clojure-money.accounts/right-side? account) (= :transaction-item.action/credit action)))
+                        1
+                        -1)}))
 
-(defn adjust-balance
-  "Adjusts the balance of an account"
-  [conn path amount action]
-  (let [account (find-account-by-path conn path)
-        pol (polarizer account action)
-        polarized-amount (* pol amount)]
-    @(d/transact conn [[:db/add (:db/id account) :account/balance polarized-amount]])))
+(def adjust-balance
+  (d/function '{:lang :clojure
+                :params [conn id amount action]
+                :code (let [account (d/touch (d/entity (d/db conn) id))
+                            pol (clojure-money.accounts/polarizer account action)
+                            polarized-amount (* pol amount)]
+                        @(d/transact conn [[:db/add (:db/id account) :account/balance polarized-amount]]))}))
 
 (defn debit-account
   "Debits the specified account"
-  [conn path amount]
-  (adjust-balance conn path amount :transaction-item.action/debit))
+  [conn id amount]
+  (adjust-balance conn id amount :transaction-item.action/debit))
 
 (defn credit-account
   "Debits the specified account"
-  [conn path amount]
-  (adjust-balance conn path amount :transaction-item.action/credit))
+  [conn id amount]
+  (adjust-balance conn id amount :transaction-item.action/credit))
 
 (defn get-balance
   "Gets the balance for the specified account"
