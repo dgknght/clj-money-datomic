@@ -26,17 +26,30 @@
 
 (declare resolve-transaction-data)
 (declare valid-transaction-data?)
+(declare create-balance-adjustment-tx-data)
 (defn add-transaction
   "Adds a new transaction to the system"
   [conn data]
   (when-not (valid-transaction-data? data)
     (throw (IllegalArgumentException. "The transaction data is not valid."))) ; TODO add details about the invalid data
   (let [new-id (d/tempid :db.part/user)
-        resolved-data (resolve-transaction-data conn data)
-        complete-data (merge {:db/id new-id} resolved-data)]
-    @(d/transact conn [complete-data])))
+        complete-data (->> data
+                           (resolve-transaction-data conn)
+                           (merge {:db/id new-id}))
+        all-tx-data (concat
+                      [complete-data]
+                      (create-balance-adjustment-tx-data conn (:transaction/items complete-data)))]
+    @(d/transact conn all-tx-data)))
 
 ;; ----- Helper methods -----
+
+(defn create-balance-adjustment-tx-data
+  "Adds tx-data for adjusting account balances for a transaction"
+  [conn items]
+  (map
+    (fn [{account :transaction-item/account action :transaction-item/action amount :transaction-item/amount}]
+      [:adjust-balance conn account amount])
+    items))
 
 (defn resolve-account
   "Resolves the information into an account id. The input may be a path, account entity, or id"
