@@ -70,21 +70,22 @@
 
 (def adjust-balance
   (d/function '{:lang :clojure
-                :params [conn id amount action]
-                :code (let [account (d/touch (d/entity (d/db conn) id))
+                :params [db id amount action]
+                :code (let [e (d/entity db id)
+                            account (d/touch e)
                             pol (clojure-money.accounts/polarizer account action)
                             polarized-amount (* pol amount)]
-                        @(d/transact conn [[:db/add (:db/id account) :account/balance polarized-amount]]))}))
+                        [[:db/add id :account/balance polarized-amount]])}))
 
 (defn debit-account
   "Debits the specified account"
   [conn id amount]
-  (adjust-balance conn id amount :transaction-item.action/debit))
+  @(d/transact conn [[:adjust-balance id amount :transaction-item.action/debit]]))
 
 (defn credit-account
   "Debits the specified account"
   [conn id amount]
-  (adjust-balance conn id amount :transaction-item.action/credit))
+  @(d/transact conn [[:adjust-balance id amount :transaction-item.action/credit]]))
 
 (defn get-balance
   "Gets the balance for the specified account"

@@ -38,17 +38,17 @@
                            (merge {:db/id new-id}))
         all-tx-data (concat
                       [complete-data]
-                      (create-balance-adjustment-tx-data db (:transaction/items complete-data)))]
+                      (create-balance-adjustment-tx-data (:transaction/items complete-data)))]
     @(d/transact conn all-tx-data)))
 
 ;; ----- Helper methods -----
 
 (defn create-balance-adjustment-tx-data
   "Adds tx-data for adjusting account balances for a transaction"
-  [conn items]
+  [items]
   (map
     (fn [{account :transaction-item/account action :transaction-item/action amount :transaction-item/amount}]
-      [:adjust-balance conn account amount])
+      [:adjust-balance account amount action])
     items))
 
 (defn resolve-account
