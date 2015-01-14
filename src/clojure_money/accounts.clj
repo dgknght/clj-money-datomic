@@ -16,40 +16,37 @@
 
 (defn all-accounts
   "Returns all of the accounts in the system"
-  [conn]
-  (let [db (d/db conn)]
-    (->> (d/q
-           '[:find ?a
-             :where [?a :account/name]]
-           db)
-         (map #(d/entity db (first %)))
-         (map #(d/touch %)))))
+  [db]
+  (->> (d/q
+         '[:find ?a
+           :where [?a :account/name]]
+         db)
+       (map #(d/entity db (first %)))
+       (map #(d/touch %))))
 
 (defn find-account-by-path
   "Finds an account with the specified path"
-  [conn path]
-  (let [db  (d/db conn)]
-    (->> path
-         (d/q
-             '[:find [?a]
-               :in $ ?account-name
-               :where [?a :account/name ?account-name]]
-             db)
-         first
-         (d/entity db)
-         d/touch)))
+  [db path]
+  (->> path
+       (d/q
+         '[:find [?a]
+           :in $ ?account-name
+           :where [?a :account/name ?account-name]]
+         db)
+       first
+       (d/entity db)
+       d/touch))
 
 (defn find-account-id-by-path
   "Finds an account with the specified path"
-  [conn path]
-  (let [db  (d/db conn)]
-    (->> path
-         (d/q
-             '[:find [?a]
-               :in $ ?account-name
-               :where [?a :account/name ?account-name]]
-             db)
-         first)))
+  [db path]
+  (->> path
+       (d/q
+         '[:find [?a]
+           :in $ ?account-name
+           :where [?a :account/name ?account-name]]
+         db)
+       first))
 
 (def left-side?
   (d/function '{:lang :clojure
@@ -91,10 +88,10 @@
 
 (defn get-balance
   "Gets the balance for the specified account"
-  [conn id]
+  [db id]
   (first (d/q
            '[:find [?balance]
              :in $ ?a
              :where [?a :account/balance ?balance]]
-           (d/db conn)
+           db
            id)))

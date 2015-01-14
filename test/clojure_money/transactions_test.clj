@@ -1,5 +1,6 @@
 (ns clojure-money.transactions-test
   (:require [expectations :refer :all]
+            [datomic.api :as d :refer [db]]
             [clojure-money.core-test :refer [create-empty-db]]
             [clojure-money.accounts :refer :all]
             [clojure-money.transactions :refer :all]))
@@ -22,7 +23,7 @@
                                                 {:transaction-item/action :transaction-item.action/credit
                                                  :transaction-item/account "Salary"
                                                  :transaction-item/amount (bigdec 1000)}]})
-          (first (get-transactions conn #datetime "2014-12-01" #datetime "2014-12-31"))))
+          (first (get-transactions (d/db conn) #datetime "2014-12-01" #datetime "2014-12-31"))))
 
 ;; A transaction must be in balance in order to be saved
 (expect IllegalArgumentException
@@ -45,8 +46,8 @@
         (let [conn (create-empty-db)]
           (add-account conn "Checking" :account.type/asset)
           (add-account conn "Salary" :account.type/income)
-          (let [checking (find-account-id-by-path conn "Checking")
-                salary (find-account-id-by-path conn "Salary")]
+          (let [checking (find-account-id-by-path (d/db conn) "Checking")
+                salary (find-account-id-by-path (d/db conn) "Salary")]
             (add-transaction conn
                              {:transaction/date #datetime "2014-12-15"
                               :transaction/description "Paycheck"
@@ -56,7 +57,7 @@
                                                   {:transaction-item/action :transaction-item.action/credit
                                                    :transaction-item/account "Salary"
                                                    :transaction-item/amount (bigdec 1000)}]})
-            [(get-balance conn checking) (get-balance conn salary)])))
+            [(get-balance (d/db conn) checking) (get-balance (d/db conn) salary)])))
 
 ;; When I credit an asset account, the balance should decrease
 

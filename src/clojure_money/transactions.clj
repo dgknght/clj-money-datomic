@@ -9,20 +9,19 @@
 (declare resolve-transactions-enums)
 (defn get-transactions
   "Returns the transactions in the specified timeframe"
-  [conn start-date end-date]
-  (let [db (d/db conn)]
-    (->> (d/q
-           '[:find ?t
-             :in $ ?start-date ?end-date
-             :where [?t :transaction/date ?transaction-date]
-             [(> ?transaction-date ?start-date)]
-             [(< ?transaction-date ?end-date)]]
-           db
-           start-date
-           end-date)
-         (map first)
-         (pull-many db '[*])
-         (resolve-transactions-enums conn))))
+  [db start-date end-date]
+  (->> (d/q
+          '[:find ?t
+            :in $ ?start-date ?end-date
+            :where [?t :transaction/date ?transaction-date]
+            [(> ?transaction-date ?start-date)]
+            [(< ?transaction-date ?end-date)]]
+          db
+          start-date
+          end-date)
+        (map first)
+        (pull-many db '[*])
+        (resolve-transactions-enums db)))
 
 (declare resolve-transaction-data)
 (declare valid-transaction-data?)
@@ -32,13 +31,14 @@
   [conn data]
   (when-not (valid-transaction-data? data)
     (throw (IllegalArgumentException. "The transaction data is not valid."))) ; TODO add details about the invalid data
-  (let [new-id (d/tempid :db.part/user)
+  (let [db (d/db conn)
+        new-id (d/tempid :db.part/user)
         complete-data (->> data
-                           (resolve-transaction-data conn)
+                           (resolve-transaction-data db)
                            (merge {:db/id new-id}))
         all-tx-data (concat
                       [complete-data]
-                      (create-balance-adjustment-tx-data conn (:transaction/items complete-data)))]
+                      (create-balance-adjustment-tx-data db (:transaction/items complete-data)))]
     @(d/transact conn all-tx-data)))
 
 ;; ----- Helper methods -----
@@ -53,20 +53,20 @@
 
 (defn resolve-account
   "Resolves the information into an account id. The input may be a path, account entity, or id"
-  [conn token]
-  (cond (string? token) (find-account-by-path conn token)
-        (integer? token) (d/entity (d/db conn) token)
+  [db token]
+  (cond (string? token) (find-account-by-path db token)
+        (integer? token) (d/entity db token)
         :else token))
 
 (defn resolve-transaction-item-data
   "Resolves references inside transaction item data"
-  [conn data]
-  (assoc-in data [:transaction-item/account] (:db/id (resolve-account conn (:transaction-item/account data)))))
+  [db data]
+  (assoc-in data [:transaction-item/account] (:db/id (resolve-account db (:transaction-item/account data)))))
 
 (defn resolve-transaction-data
   "Resolves references inside transaction data"
-  [conn data]
-  (assoc-in data [:transaction/items] (map #(resolve-transaction-item-data conn %) (:transaction/items data))))
+  [db data]
+  (assoc-in data [:transaction/items] (map #(resolve-transaction-item-data db %) (:transaction/items data))))
 
 (defn resolve-action
   "Looks up a transaction item action from a db/id"
@@ -94,9 +94,8 @@
 
 (defn resolve-transactions-enums
   "Looks up references in a list of transaction maps"
-  [conn transactions]
-  (let [db (d/db conn)]
-    (map #(resolve-transaction-enums db %) transactions)))
+  [db transactions]
+  (map #(resolve-transaction-enums db %) transactions))
 
 (defn item-total
   "returns the total of the debit or credit actions"
