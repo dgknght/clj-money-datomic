@@ -39,7 +39,27 @@
         all-tx-data (concat
                       [complete-data]
                       (create-balance-adjustment-tx-data (:transaction/items complete-data)))]
-    @(d/transact conn all-tx-data)))
+    (let [result @(d/transact conn all-tx-data)
+          tempids (:tempids result)]
+      (d/resolve-tempid (d/db conn) tempids new-id))))
+
+(defn add-simple-transaction
+  "Add a two-item transaction, crediting one account and debiting another"
+  [conn {:keys [amount debit-account credit-account] :as data}]
+  (let [transaction-tx-data (-> data
+                                (dissoc :amount :credit-account :debit-account)
+                                (assoc :transaction/items [{:transaction-item/action :transaction-item.action/debit
+                                                            :transaction-item/account debit-account
+                                                            :transaction-item/amount amount}
+                                                           {:transaction-item/action :transaction-item.action/credit
+                                                            :transaction-item/account credit-account
+                                                            :transaction-item/amount amount}]))]
+    (add-transaction conn transaction-tx-data)))
+
+(defn get-transaction
+  "Returns a transaction, given a transaction id"
+  [db id]
+  (d/touch (d/entity db id)))
 
 ;; ----- Helper methods -----
 
