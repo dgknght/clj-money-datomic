@@ -74,8 +74,10 @@
                 :code (let [e (d/entity db id)
                             account (d/touch e)
                             pol (clojure-money.accounts/polarizer account action)
-                            polarized-amount (* pol amount)]
-                        [[:db/add id :account/balance polarized-amount]])}))
+                            current-balance (:account/balance account)
+                            polarized-amount (* pol amount)
+                            new-balance (+ current-balance polarized-amount)]
+                        [[:db/add id :account/balance new-balance]])}))
 
 (defn debit-account
   "Debits the specified account"

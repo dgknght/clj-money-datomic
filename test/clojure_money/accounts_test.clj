@@ -68,35 +68,39 @@
 ;; Equity/Capital   Decrease  Increase
 
 ;; debiting an asset account increases the balance
-(expect (bigdec 100)
+(expect (bigdec 200)
         (let [conn (create-empty-db)]
           (add-account conn "Checking")
           (let [id (find-account-id-by-path (d/db conn) "Checking")]
+            (debit-account conn id (bigdec 100))
             (debit-account conn id (bigdec 100))
             (get-balance (d/db conn) id))))
 
 ;; crediting an asset account decreases the balance
-(expect (bigdec -100)
+(expect (bigdec 50)
         (let [conn (create-empty-db)]
           (add-account conn "Checking")
           (let [id (find-account-id-by-path (d/db conn) "Checking")]
-            (credit-account conn id (bigdec 100))
+            (debit-account conn id (bigdec 100))
+            (credit-account conn id (bigdec 50))
             (get-balance (d/db conn) id))))
 
 ;; debiting an expense account increases the balance
-(expect (bigdec 100)
+(expect (bigdec 200)
         (let [conn (create-empty-db)]
             (add-account conn "Rent" :account.type/expense)
           (let [id (find-account-id-by-path (d/db conn) "Rent")]
             (debit-account conn id (bigdec 100))
+            (debit-account conn id (bigdec 100))
             (get-balance (d/db conn) id))))
 
 ;; crediting an expense account decreases the balance
-(expect (bigdec -100)
+(expect (bigdec 50)
         (let [conn (create-empty-db)]
           (add-account conn "Rent" :account.type/expense)
           (let [id (find-account-id-by-path (d/db conn) "Rent")]
-            (credit-account conn id (bigdec 100))
+            (debit-account conn id (bigdec 100))
+            (credit-account conn id (bigdec 50))
             (get-balance (d/db conn) id))))
 
 ;; debiting a liability account decreases the balance
