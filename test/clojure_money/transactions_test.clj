@@ -96,6 +96,18 @@
 ;; When I debit a liability account, the balance should decrease
 
 ;; When I credit a liability account, the balance should increase
+(expect (bigdec 500)
+        (let [conn (create-empty-db)]
+          (add-account conn "Credit card" :account.type/liability)
+          (add-account conn "Rent" :account.type/expense)
+          (let [credit-card (find-account-id-by-path (d/db conn) "Credit card")
+                rent (find-account-id-by-path (d/db conn) "Rent")]
+            (add-simple-transaction conn {:transaction/date #datetime "2014-12-15"
+                                          :transaction/description "Rent"
+                                          :amount (bigdec 500)
+                                          :debit-account "Rent"
+                                          :credit-account "Credit card"})
+            (get-balance (d/db conn) credit-card))))
 
 ;; When I debit an equity account, the balance should decrease
 
