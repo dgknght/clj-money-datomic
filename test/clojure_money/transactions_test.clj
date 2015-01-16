@@ -133,6 +133,17 @@
             (get-balance (d/db conn) credit-card))))
 
 ;; When I debit an equity account, the balance should decrease
+(expect (bigdec -500)
+        (let [conn (create-empty-db)]
+          (add-account conn "Checking" :account.type/asset)
+          (add-account conn "Opening balances" :account.type/equity)
+          (let [opening-balances (find-account-id-by-path (d/db conn) "Opening balances")]
+            (add-simple-transaction conn {:transaction/date #datetime "2014-12-15"
+                                          :transaction/description "Opening balance"
+                                          :amount (bigdec 500)
+                                          :debit-account "Opening balances"
+                                          :credit-account "Checking"})
+            (get-balance (d/db conn) opening-balances))))
 
 ;; When I credit an equity account, the balance should increase
 (expect (bigdec 500)
@@ -148,10 +159,20 @@
             (get-balance (d/db conn) opening-balances))))
 
 ;; When I debit an income account, the balance should decrease
-
-
-
-;; When I credit an expense account, the balance should descease
+;; When I credit an expense account, the balance should decrease
+(expect [(bigdec -1000) (bigdec -1000)]
+        (let [conn (create-empty-db)]
+          (add-account conn "Salary" :account.type/income)
+          (add-account conn "Rent" :account.type/expense)
+          (let [db (d/db conn)
+                salary (find-account-id-by-path db "Salary")
+                rent (find-account-id-by-path db "Rent")]
+            (add-simple-transaction conn {:transaction/date #datetime "2014-12-15"
+                                          :transaction/description "Convoluted transaction for a test"
+                                          :amount (bigdec 1000)
+                                          :debit-account "Salary"
+                                          :credit-account "Rent"})
+            [(get-balance (d/db conn) salary) (get-balance (d/db conn) rent)])))
 
 ;; Adding a simple transaction should affect the account balances properly
 (expect [(bigdec 1000) (bigdec 1000)]
