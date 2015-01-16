@@ -135,6 +135,17 @@
 ;; When I debit an equity account, the balance should decrease
 
 ;; When I credit an equity account, the balance should increase
+(expect (bigdec 500)
+        (let [conn (create-empty-db)]
+          (add-account conn "Checking" :account.type/asset)
+          (add-account conn "Opening balances" :account.type/equity)
+          (let [opening-balances (find-account-id-by-path (d/db conn) "Opening balances")]
+            (add-simple-transaction conn {:transaction/date #datetime "2014-12-15"
+                                          :transaction/description "Opening balance"
+                                          :amount (bigdec 500)
+                                          :debit-account "Checking"
+                                          :credit-account "Opening balances"})
+            (get-balance (d/db conn) opening-balances))))
 
 ;; When I debit an income account, the balance should decrease
 
