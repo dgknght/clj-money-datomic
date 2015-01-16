@@ -65,15 +65,11 @@
           (add-account conn "Salary" :account.type/income)
           (let [checking (find-account-id-by-path (d/db conn) "Checking")
                 salary (find-account-id-by-path (d/db conn) "Salary")]
-            (add-transaction conn
-                             {:transaction/date #datetime "2014-12-15"
-                              :transaction/description "Paycheck"
-                              :transaction/items [{:transaction-item/action :transaction-item.action/debit
-                                                   :transaction-item/account "Checking"
-                                                   :transaction-item/amount (bigdec 1000)}
-                                                  {:transaction-item/action :transaction-item.action/credit
-                                                   :transaction-item/account "Salary"
-                                                   :transaction-item/amount (bigdec 1000)}]})
+            (add-simple-transaction conn {:transaction/date #datetime "2014-12-15"
+                                          :transaction/description "Paycheck"
+                                          :amount (bigdec 1000)
+                                          :debit-account "Checking"
+                                          :credit-account "Salary"})
             [(get-balance (d/db conn) checking) (get-balance (d/db conn) salary)])))
 
 ;; When I credit an asset account, the balance should decrease
