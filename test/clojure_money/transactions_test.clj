@@ -94,6 +94,29 @@
             [(get-balance (d/db conn) checking) (get-balance (d/db conn) rent)])))
 
 ;; When I debit a liability account, the balance should decrease
+(expect (bigdec 250)
+        (let [conn (create-empty-db)]
+          (add-account conn "Checking" :account.type/asset)
+          (add-account conn "Salary" :account.type/income)
+          (add-account conn "Rent" :account.type/expense)
+          (add-account conn "Credit card" :account.type/liability)
+          (let [credit-card (find-account-id-by-path (d/db conn) "Credit card")]
+            (add-simple-transaction conn {:transaction/date #datetime "2014-12-15"
+                                          :transaction/description "Paycheck"
+                                          :amount (bigdec 2000)
+                                          :debit-account "Checking"
+                                          :credit-account "Salary"})
+            (add-simple-transaction conn {:transaction/date #datetime "2014-12-16"
+                                          :transaction/description "Rent"
+                                          :amount (bigdec 500)
+                                          :debit-account "Rent"
+                                          :credit-account "Credit card"})
+            (add-simple-transaction conn {:transaction/date #datetime "2014-12-17"
+                                          :transaction/description "Credit card"
+                                          :amount (bigdec 250)
+                                          :debit-account "Credit card"
+                                          :credit-account "Checking"})
+            (get-balance (d/db conn) credit-card))))
 
 ;; When I credit a liability account, the balance should increase
 (expect (bigdec 500)
