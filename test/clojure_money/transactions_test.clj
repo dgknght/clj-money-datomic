@@ -73,6 +73,25 @@
             [(get-balance (d/db conn) checking) (get-balance (d/db conn) salary)])))
 
 ;; When I credit an asset account, the balance should decrease
+;; When I debit an expense account, the balance should increase
+(expect [(bigdec 1500) (bigdec 500)]
+        (let [conn (create-empty-db)]
+          (add-account conn "Checking" :account.type/asset)
+          (add-account conn "Salary" :account.type/income)
+          (add-account conn "Rent" :account.type/expense)
+          (let [checking (find-account-id-by-path (d/db conn) "Checking")
+                rent (find-account-id-by-path (d/db conn) "Rent")]
+            (add-simple-transaction conn {:transaction/date #datetime "2014-12-15"
+                                          :transaction/description "Paycheck"
+                                          :amount (bigdec 2000)
+                                          :debit-account "Checking"
+                                          :credit-account "Salary"})
+            (add-simple-transaction conn {:transaction/date #datetime "2014-12-15"
+                                          :transaction/description "Rent"
+                                          :amount (bigdec 500)
+                                          :debit-account "Rent"
+                                          :credit-account "Checking"})
+            [(get-balance (d/db conn) checking) (get-balance (d/db conn) rent)])))
 
 ;; When I debit a liability account, the balance should decrease
 
@@ -85,7 +104,6 @@
 ;; When I debit an income account, the balance should decrease
 
 
-;; When I debit an expense account, the balance should increase
 
 ;; When I credit an expense account, the balance should descease
 
