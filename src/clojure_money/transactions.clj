@@ -24,13 +24,12 @@
         (resolve-transactions-enums db)))
 
 (declare resolve-transaction-data)
-(declare valid-transaction-data?)
+(declare validate-transaction-data)
 (declare create-balance-adjustment-tx-data)
 (defn add-transaction
   "Adds a new transaction to the system"
   [conn data]
-  (when-not (valid-transaction-data? data)
-    (throw (IllegalArgumentException. "The transaction data is not valid."))) ; TODO add details about the invalid data
+  (validate-transaction-data data)
   (let [db (d/db conn)
         new-id (d/tempid :db.part/user)
         complete-data (->> data
@@ -132,11 +131,13 @@
         debit-total (item-total :transaction-item.action/debit items)]
     (= credit-total debit-total)))
 
-(defn valid-transaction-data?
-  "Returns a boolean value indicating whether or not the transaction data is valid"
-  [{transaction-date :transaction/date description :transaction/description items :transaction/items}]
-  (cond
-    (nil? transaction-date) false
-    (nil? description) false
-    (not (credit-debit-balanced? items)) false
-    :else true))
+(defn validate-transaction-data
+  "Throws an exception if any of the data is invalid"
+  [data]
+  (let [errors (reduce (fn [list [test-fn test-msg]]
+                          (if (test-fn data) (conj list test-msg)))
+                       []
+                       [[#(nil? (:transaction/date %)) ":transaction/date must be specified"]
+                        [#(nil? (:transaction/description %)) ":transaction/description must be specified"]
+                        [#(not (credit-debit-balanced? (:transaction/items %))) "The transaction items must have balanced debit and credit totals"]])]
+    (if (seq errors) (throw (IllegalArgumentException. (apply str (concat ["The transaction data is not valid: "] errors)))))))
