@@ -1,5 +1,6 @@
 (ns clojure-money.reports-test
   (:require [expectations :refer :all]
+            [datomic.api :as d :refer [db]]
             [clojure-money.core-test :refer [create-empty-db]]
             [clojure-money.accounts :refer :all]
             [clojure-money.transactions :refer :all]
@@ -45,7 +46,8 @@
                                   :transaction/description "Kroger"
                                   :amount (bigdec 100)
                                   :debit-account "Groceries"
-                                  :credit-account "Credit card"})))
+                                  :credit-account "Credit card"})
+  conn))
 
 (expect [{:caption "Assets" :value 22000 :depth 0 :style :header}
          {:caption "Checking" :value 2000 :depth 0 :style :data}
@@ -55,5 +57,5 @@
          {:caption "Equity" :value 21700 :depth 0 :style :header}
          {:caption "Opening balances" :value 20000 :depth 0 :style :data}
          {:caption "Retained earnings" :value 1700 :depth 0 :style :data}]
-        (let [db (populate-db)]
-          (balance-sheet-report db, #datetime "2015-01-31")))
+        (let [conn (populate-db)]
+          (balance-sheet-report (d/db conn) #datetime "2015-01-31")))
