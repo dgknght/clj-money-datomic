@@ -8,17 +8,13 @@
 (defn populate-db
   "Creates and populates a database"
   []
-  (let [conn (create-empty-db)
-        add (partial add-account conn)
-        accounts [["Checking" :account.type/asset]
-                  ["Savings" :account.type/asset]
-                  ["Credit card" :account.type/liability]
-                  ["Opening balances" :account.type/equity]
-                  ["Salary" :account.type/income]
-                  ["Groceries" :account.type/expense]]]
-
-    (for [a accounts]
-      (apply add a))
+  (let [conn (create-empty-db)]
+    (add-account conn "Checking" :account.type/asset)
+    (add-account conn "Savings" :account.type/asset)
+    (add-account conn "Credit card" :account.type/liability)
+    (add-account conn "Opening balances" :account.type/equity)
+    (add-account conn "Salary" :account.type/income)
+    (add-account conn "Groceries" :account.type/expense)
 
     (add-simple-transaction conn {:transaction/date #datetime "2015-01-01"
                                   :transaction/description "Opening balance"
