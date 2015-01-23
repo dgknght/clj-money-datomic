@@ -49,7 +49,7 @@
                                   :credit-account "Credit card"})
   conn))
 
-(expect [{:caption "Assets" :value 22000 :depth 0 :style :header}
+(expect-focused [{:caption "Assets" :value 22000 :depth 0 :style :header}
          {:caption "Checking" :value 2000 :depth 0 :style :data}
          {:caption "Savings" :value 20000 :depth 0 :style :data}
          {:caption "Liabilities" :value 300 :depth 0 :style :header}
