@@ -19,7 +19,7 @@
 
     (add-simple-transaction conn {:transaction/date #datetime "2015-01-01"
                                   :transaction/description "Opening balance"
-                                  :amount (bigdec 1000)
+                                  :amount (bigdec 20000)
                                   :debit-account "Savings"
                                   :credit-account "Opening balances"})
     (add-simple-transaction conn {:transaction/date #datetime "2015-01-01"
@@ -50,12 +50,14 @@
   conn))
 
 (expect-focused [{:caption "Assets" :value 22000 :depth 0 :style :header}
-         {:caption "Checking" :value 2000 :depth 0 :style :data}
-         {:caption "Savings" :value 20000 :depth 0 :style :data}
-         {:caption "Liabilities" :value 300 :depth 0 :style :header}
-         {:caption "Credit card" :value 300 :depth 0 :style :data}
-         {:caption "Equity" :value 21700 :depth 0 :style :header}
-         {:caption "Opening balances" :value 20000 :depth 0 :style :data}
-         {:caption "Retained earnings" :value 1700 :depth 0 :style :data}]
-        (let [conn (populate-db)]
-          (balance-sheet-report (d/db conn) #datetime "2015-01-31")))
+                 {:caption "Checking" :value 2000 :depth 0 :style :data}
+                 {:caption "Savings" :value 20000 :depth 0 :style :data}
+                 {:caption "Liabilities" :value 300 :depth 0 :style :header}
+                 {:caption "Credit card" :value 300 :depth 0 :style :data}
+                 {:caption "Equity" :value 21700 :depth 0 :style :header}
+                 {:caption "Opening balances" :value 20000 :depth 0 :style :data}
+                 {:caption "Retained earnings" :value 1700 :depth 0 :style :data}]
+                (let [conn (populate-db)
+                      report (balance-sheet-report (d/db conn) #datetime "2015-01-31")]
+                  report))
+

@@ -8,15 +8,69 @@
 ;; to create the reports
 
 (declare interleave-summaries)
+(declare append-totals)
+(declare entity-map->hash-map)
+(declare map-keys)
+(declare calculate-retained-earnings)
 (defn balance-sheet-report
   "Returns a balance sheet report"
   [db as-of-date]
   (->> (all-accounts db)
+       (map entity-map->hash-map)
+       (map map-keys)
        (sort-by :account/type)
-       (partition-by :account/type)
+       (group-by :account/type)
+       (append-totals)
+       (calculate-retained-earnings)
        (interleave-summaries)))
 
+(defn calculate-retained-earnings
+  "Takes a map of accounts grouped by type and inserts a 'Retained earnings'
+  entry into the equity accounts based on the income and expense values"
+  [{[_ income] :account.type/income
+    [_ expense] :account.type/expense
+    :as grouped-accounts}]
+  (let [retained-earnings (- income expense)]
+    (-> grouped-accounts
+        (update-in [:account.type/equity 0] #(conj % {:caption "Retained earnings"
+                                                      :value retained-earnings
+                                                      :style :data
+                                                      :depth 0}))
+        (update-in [:account.type/equity 1] #(+ % retained-earnings)))))
+
+(defn map-keys
+  "Takes a map containing datomic keys and returns a map with 
+  report-ready keys, omitting unecessary values"
+  [account]
+  (-> account
+      (rename-keys {:account/name :caption :account/balance :value})
+      (select-keys [:caption :value :account/type])
+      (assoc :depth 0 :style :data)))
+
+(defn sum
+  "Returns the sum of the values of the specified records"
+  [accounts]
+  (reduce #(+ %1 (:value %2)) 0 accounts))
+
+;; Input looks like
+;; {:account.type/asset [{:caption "Checking" :value 100 :depth 0 :style :data}
+;;                       {:caption "Savings"  :value 150 :depth 0 :style :data}]}
+;; Output looks like
+;; {:account.type/asset [[{:caption "Checking" :value 100 :depth 0 :style :data}
+;;                        {:caption "Savings"  :value 150 :depth 0 :style :data}] 250]}
+(defn append-totals
+  "Takes a hash with account types for keys and a list of accounts for values and
+  converts the list of accounts into a vector containing the list of accounts and
+  the total for the accounts in each group"
+  [grouped-accounts]
+  (reduce (fn [result [k accounts]]
+            (assoc result k [accounts (sum accounts)]))
+          {}
+          grouped-accounts))
+
+
 (defn entity-map->hash-map
+  "Accepts an EntityMap and returns a run-of-the-mill hash map"
   [entity]
   (apply hash-map (-> entity
                       seq
@@ -26,7 +80,6 @@
   "Takes an entity map of an account and formats it for a report"
   [account]
   (-> account
-      entity-map->hash-map
       (rename-keys {:account/name :caption :account/balance :value})
       (select-keys [:caption :value])
       (assoc :depth 0 :style :data)))
@@ -41,16 +94,31 @@
                                :account.type/equity "Equity"
                                :account.type/income "Income"
                                :account.type/expense "Expense"})
+
+(def balance-sheet-account-types [:account.type/asset
+                                  :account.type/liability
+                                  :account.type/equity])
+
+;; Input data is a hash map where each key is an account type and each value
+;; is a vector containing the list of accounts and the sum of the account values
+;; {account-type [vector-of-accounts sum-of-account-values]}
+;; Output data is a list of hash maps that look like this
+;; {:caption "Assets" :value 2000 :depth 0 :style :header}
 (defn interleave-summaries
   "Takes a list of accounts grouped by account type interleaves account type summaries"
   [grouped-accounts]
-  (reduce (fn [result group]
-            (let [total (reduce (fn [total account] (+ total (:account/balance account))) 0 group)
-                  header {:caption ((:account/type (first group)) account-type-caption-map)
-                          :value total
-                          :style :header
-                          :depth 0}
-                  formatted-group (format-accounts group)]
-              (apply vector (concat (conj result header) formatted-group))))
+
+  (dorun (for [t (keys grouped-accounts)]
+           (do 
+           (println t)
+           (dorun (for [a (t grouped-accounts)]
+                    (println (str "  " a)))))))
+
+  (reduce (fn [result t]
+            (apply vector (concat (conj result {:caption (t account-type-caption-map)
+                                                :value (last (t grouped-accounts))
+                                                :style :header
+                                                :depth 0}) (first (t grouped-accounts)))))
           []
-          grouped-accounts))
+          balance-sheet-account-types))
+
