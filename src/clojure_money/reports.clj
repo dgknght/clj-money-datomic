@@ -107,13 +107,6 @@
 (defn interleave-summaries
   "Takes a list of accounts grouped by account type interleaves account type summaries"
   [grouped-accounts]
-
-  (dorun (for [t (keys grouped-accounts)]
-           (do 
-           (println t)
-           (dorun (for [a (t grouped-accounts)]
-                    (println (str "  " a)))))))
-
   (reduce (fn [result t]
             (apply vector (concat (conj result {:caption (t account-type-caption-map)
                                                 :value (last (t grouped-accounts))
