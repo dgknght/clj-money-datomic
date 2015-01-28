@@ -100,7 +100,7 @@
 ;; {:caption "Assets" :value 2000 :depth 0 :style :header}
 (defn interleave-summaries
   "Takes a list of accounts grouped by account type interleaves account type summaries"
-  [grouped-accounts]
+  [account-types grouped-accounts]
   (reduce (fn [result t]
             (apply vector (concat (conj result {:caption (t account-type-caption-map)
                                                 :value (last (t grouped-accounts))
@@ -108,7 +108,7 @@
                                                 :depth 0})
                                   (first (t grouped-accounts)))))
           []
-          balance-sheet-account-types))
+          account-types))
 
 (defn balance-sheet-report
   "Returns a balance sheet report"
@@ -120,5 +120,17 @@
        group-by-type
        append-totals
        calculate-retained-earnings
-       interleave-summaries
+       (interleave-summaries balance-sheet-account-types)
+       strip-unneeded-values))
+
+(defn income-statement-report
+  "Returns an income statement report"
+  [db from to]
+  (->> (all-accounts db)
+       (map entity-map->hash-map)
+       (map map-keys)
+       (sort-by :account/type)
+       (group-by-type)
+       append-totals
+       (interleave-summaries [:account.type/income :account.type/expense])
        strip-unneeded-values))
