@@ -13,6 +13,7 @@
 (declare map-keys)
 (declare calculate-retained-earnings)
 (declare group-by-account)
+(declare strip-unneeded-values)
 (defn balance-sheet-report
   "Returns a balance sheet report"
   [db as-of-date]
@@ -23,7 +24,13 @@
        group-by-account
        append-totals
        calculate-retained-earnings
-       interleave-summaries))
+       interleave-summaries
+       strip-unneeded-values))
+
+(defn strip-unneeded-values
+  "Removes values that are unneeded for reporting purposes"
+  [report-data]
+  (map #(select-keys % [:caption :value :depth :style]) report-data))
 
 (defn group-by-account
   "Takes a list of accounts and returns a hash with account types as keys,
