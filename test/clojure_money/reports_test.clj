@@ -49,6 +49,7 @@
                                   :credit-account "Credit card"})
   conn))
 
+; Uses the current balances
 (expect [{:caption "Assets" :value (bigdec 22000) :depth 0 :style :header}
          {:caption "Checking" :value (bigdec 2000) :depth 0 :style :data}
          {:caption "Savings" :value (bigdec 20000) :depth 0 :style :data}
@@ -59,6 +60,18 @@
          {:caption "Retained earnings" :value (bigdec 1700) :depth 0 :style :data}]
         (let [conn (populate-db)]
           (balance-sheet-report (d/db conn) #datetime "2015-01-31")))
+
+; Uses balances as of a prior date
+(expect [{:caption "Assets" :value (bigdec 22000) :depth 0 :style :header}
+         {:caption "Checking" :value (bigdec 2000) :depth 0 :style :data}
+         {:caption "Savings" :value (bigdec 20000) :depth 0 :style :data}
+         {:caption "Liabilities" :value (bigdec 200) :depth 0 :style :header}
+         {:caption "Credit card" :value (bigdec 200) :depth 0 :style :data}
+         {:caption "Equity" :value (bigdec 21800) :depth 0 :style :header}
+         {:caption "Opening balances" :value (bigdec 20000) :depth 0 :style :data}
+         {:caption "Retained earnings" :value (bigdec 1800) :depth 0 :style :data}]
+        (let [conn (populate-db)]
+          (balance-sheet-report (d/db conn) #datetime "2015-01-15")))
 
 (expect [{:caption "Income" :value (bigdec 2000) :depth 0 :style :header}
          {:caption "Salary" :value (bigdec 2000) :depth 0 :style :data}

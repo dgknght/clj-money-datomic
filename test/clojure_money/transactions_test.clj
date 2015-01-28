@@ -205,3 +205,46 @@
                                           :debit-account checking})
                   db (d/db conn)]
               (get-transaction db id)))))
+
+(defn calculate-account-balance-setup
+  "Add transaction for calculate-account-balance tests"
+  [conn]
+  (add-account conn "Salary" :account.type/income)
+  (add-account conn "Checking" :account.type/asset)
+  (add-account conn "Groceries" :account.type/expense)
+  (let [db (d/db conn)
+        salary (find-account-id-by-path db "Salary")
+        checking (find-account-id-by-path db "Checking")
+        groceries (find-account-id-by-path db "Groceries")]
+    (add-simple-transaction conn {:transaction/date #datetime "2015-01-01"
+                                  :transaction/description "Paycheck"
+                                  :amount (bigdec 1000)
+                                  :debit-account checking
+                                  :credit-account salary})
+    (add-simple-transaction conn {:transaction/date #datetime "2015-01-04"
+                                  :transaction/description "Kroger"
+                                  :amount (bigdec 100)
+                                  :debit-account groceries
+                                  :credit-account checking})
+    (add-simple-transaction conn {:transaction/date #datetime "2015-01-11"
+                                  :transaction/description "Kroger"
+                                  :amount (bigdec 100)
+                                  :debit-account groceries
+                                  :credit-account checking})
+    {:checking checking :salary salary :groceries groceries}))
+
+;; calculate-account-balance should sum the polarized transaction item amounts from the inception to the specified date
+(expect-focused (bigdec 0)
+        (let [conn (create-empty-db)
+              accounts (calculate-account-balance-setup conn)]
+          (calculate-account-balance (d/db conn) (:groceries accounts) #datetime "2014-12-31")))
+
+(expect-focused (bigdec 100)
+        (let [conn (create-empty-db)
+              accounts (calculate-account-balance-setup conn)]
+          (calculate-account-balance (d/db conn) (:groceries accounts) #datetime "2015-01-04")))
+
+(expect-focused (bigdec 200)
+        (let [conn (create-empty-db)
+              accounts (calculate-account-balance-setup conn)]
+          (calculate-account-balance (d/db conn) (:groceries accounts) #datetime "2015-12-31")))

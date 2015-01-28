@@ -110,10 +110,19 @@
           []
           account-types))
 
+(defn set-balances
+  "Sets the :account/balance value for each account based on the specified date"
+  [db as-of-date accounts]
+  (map #(assoc %
+               :account/balance
+               (calculate-balance db (:db/id %) as-of-date))
+       accounts))
+
 (defn balance-sheet-report
   "Returns a balance sheet report"
   [db as-of-date]
   (->> (all-accounts db)
+       (set-balances db as-of-date)
        (map entity-map->hash-map)
        (map map-keys)
        (sort-by :account/type)

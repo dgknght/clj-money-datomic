@@ -131,6 +131,27 @@
         debit-total (item-total :transaction-item.action/debit items)]
     (= credit-total debit-total)))
 
+(defn calculate-account-balance
+  "Given an account ID, totals the transaction item values for the specified account through the specified date"
+  [db account as-of-date]
+  (let [account (d/touch (d/entity db account))
+        amounts (d/q '[:find ?amount ?action-name
+                       :in $ ?as-of-date ?account-id
+                       :where [?t :transaction/date ?transaction-date]
+                       [?t :transaction/items ?i]
+                       [?i :transaction-item/account ?account-id]
+                       [?i :transaction-item/amount ?amount]
+                       [?i :transaction-item/action ?action]
+                       [?action :db/ident ?action-name]
+                       [(<= ?transaction-date ?as-of-date)]]
+                     db
+                     as-of-date
+                     (:db/id account))]
+    (reduce (fn [result [amount action]]
+              (+ result (* amount (polarizer account action))))
+            (bigdec 0)
+            amounts)))
+
 (defn validate-transaction-data
   "Throws an exception if any of the data is invalid"
   [data]
