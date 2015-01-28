@@ -121,7 +121,8 @@
             (apply vector (concat (conj result {:caption (t account-type-caption-map)
                                                 :value (last (t grouped-accounts))
                                                 :style :header
-                                                :depth 0}) (first (t grouped-accounts)))))
+                                                :depth 0})
+                                  (first (t grouped-accounts)))))
           []
           balance-sheet-account-types))
 
