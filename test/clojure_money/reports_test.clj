@@ -49,19 +49,13 @@
                                   :credit-account "Credit card"})
   conn))
 
-(expect-focused [{:caption "Assets" :value (bigdec 22000) :depth 0 :style :header}
-                 {:caption "Checking" :value (bigdec 2000) :depth 0 :style :data}
-                 {:caption "Savings" :value (bigdec 20000) :depth 0 :style :data}
-                 {:caption "Liabilities" :value (bigdec 300) :depth 0 :style :header}
-                 {:caption "Credit card" :value (bigdec 300) :depth 0 :style :data}
-                 {:caption "Equity" :value (bigdec 21700) :depth 0 :style :header}
-                 {:caption "Opening balances" :value (bigdec 20000) :depth 0 :style :data}
-                 {:caption "Retained earnings" :value (bigdec 1700) :depth 0 :style :data}]
-                (let [conn (populate-db)
-                      report (balance-sheet-report (d/db conn) #datetime "2015-01-31")]
-
-                  (dorun (for [l report]
-                           (println l)))
-
-                  report))
-
+(expect [{:caption "Assets" :value (bigdec 22000) :depth 0 :style :header}
+         {:caption "Checking" :value (bigdec 2000) :depth 0 :style :data}
+         {:caption "Savings" :value (bigdec 20000) :depth 0 :style :data}
+         {:caption "Liabilities" :value (bigdec 300) :depth 0 :style :header}
+         {:caption "Credit card" :value (bigdec 300) :depth 0 :style :data}
+         {:caption "Equity" :value (bigdec 21700) :depth 0 :style :header}
+         {:caption "Opening balances" :value (bigdec 20000) :depth 0 :style :data}
+         {:caption "Retained earnings" :value (bigdec 1700) :depth 0 :style :data}]
+        (let [conn (populate-db)]
+          (balance-sheet-report (d/db conn) #datetime "2015-01-31")))

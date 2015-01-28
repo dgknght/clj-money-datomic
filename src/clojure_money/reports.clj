@@ -3,43 +3,20 @@
         clojure.set)
   (:gen-class))
 
-;; This class shouldn't reference any database functions directly
+;; These functions shouldn't reference any database functions directly
 ;; Rather, it should compose HOF from accounts and transactions
 ;; to create the reports
-
-(declare interleave-summaries)
-(declare append-totals)
-(declare entity-map->hash-map)
-(declare map-keys)
-(declare calculate-retained-earnings)
-(declare group-by-account)
-(declare strip-unneeded-values)
-(defn balance-sheet-report
-  "Returns a balance sheet report"
-  [db as-of-date]
-  (->> (all-accounts db)
-       (map entity-map->hash-map)
-       (map map-keys)
-       (sort-by :account/type)
-       group-by-account
-       append-totals
-       calculate-retained-earnings
-       interleave-summaries
-       strip-unneeded-values))
 
 (defn strip-unneeded-values
   "Removes values that are unneeded for reporting purposes"
   [report-data]
   (map #(select-keys % [:caption :value :depth :style]) report-data))
 
-(defn group-by-account
+(defn group-by-type
   "Takes a list of accounts and returns a hash with account types as keys,
   removing the account type from each item in the list"
   [accounts]
-  (let [grouped (group-by :account/type accounts)]
-    (dorun (for [g grouped]
-             (println (str "g=" g))))
-    grouped))
+  (group-by :account/type accounts))
 
 (defn calculate-retained-earnings
   "Takes a map of accounts grouped by type and inserts a 'Retained earnings'
@@ -133,3 +110,15 @@
           []
           balance-sheet-account-types))
 
+(defn balance-sheet-report
+  "Returns a balance sheet report"
+  [db as-of-date]
+  (->> (all-accounts db)
+       (map entity-map->hash-map)
+       (map map-keys)
+       (sort-by :account/type)
+       group-by-type
+       append-totals
+       calculate-retained-earnings
+       interleave-summaries
+       strip-unneeded-values))
