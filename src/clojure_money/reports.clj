@@ -1,6 +1,7 @@
 (ns clojure-money.reports
   (:use clojure-money.accounts
         clojure-money.transactions
+        clojure-money.core
         clojure.set)
   (:gen-class))
 
@@ -114,11 +115,12 @@
 
 (defn set-balances
   "Sets the :account/balance value for each account based on the specified date"
-  [db as-of-date accounts]
+  ([db to accounts] (set-balances db earliest-date to accounts))
+  ([db from to accounts]
   (map #(assoc %
                :account/balance
-               (calculate-account-balance db (:db/id %) as-of-date))
-       accounts))
+               (calculate-account-balance db (:db/id %) from to))
+       accounts)))
 
 (defn balance-sheet-report
   "Returns a balance sheet report"
@@ -139,6 +141,7 @@
   [db from to]
   (->> (all-accounts db)
        (map entity-map->hash-map)
+       (set-balances db from to)
        (map map-keys)
        (sort-by :account/type)
        (group-by-type)

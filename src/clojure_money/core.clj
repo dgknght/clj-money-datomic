@@ -14,6 +14,8 @@
   [s]
   (read-string (str "#inst \"" s "\"")))
 
+(def earliest-date #datetime "1900-01-01")
+
 (defn get-ident
   "Returns the identifier for the database entity with the specified id"
   [db id]

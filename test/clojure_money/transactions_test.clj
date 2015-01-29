@@ -263,3 +263,8 @@
         (let [conn (create-empty-db)
               accounts (calculate-account-balance-setup conn)]
           (calculate-account-balance (d/db conn) (:checking accounts) #datetime "2015-12-31")))
+
+(expect (bigdec 90)
+        (let [conn (create-empty-db)
+              accounts (calculate-account-balance-setup conn)]
+          (calculate-account-balance (d/db conn) (:groceries accounts) #datetime "2015-01-11" #datetime "2015-01-12")))

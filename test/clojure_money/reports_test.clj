@@ -79,3 +79,10 @@
          {:caption "Groceries" :value (bigdec 300) :depth 0 :style :data}]
         (let [conn (populate-db)]
           (income-statement-report (d/db conn) #datetime "2015-01-01" #datetime "2015-01-31")))
+
+(expect [{:caption "Income" :value (bigdec 1000) :depth 0 :style :header}
+         {:caption "Salary" :value (bigdec 1000) :depth 0 :style :data}
+         {:caption "Expense" :value (bigdec 100) :depth 0 :style :header}
+         {:caption "Groceries" :value (bigdec 100) :depth 0 :style :data}]
+        (let [conn (populate-db)]
+          (income-statement-report (d/db conn) #datetime "2015-01-01" #datetime "2015-01-04")))
