@@ -1,5 +1,6 @@
 (ns clojure-money.reports
   (:use clojure-money.accounts
+        clojure-money.transactions
         clojure.set)
   (:gen-class))
 
@@ -62,13 +63,14 @@
           {}
           grouped-accounts))
 
-
 (defn entity-map->hash-map
   "Accepts an EntityMap and returns a run-of-the-mill hash map"
   [entity]
-  (apply hash-map (-> entity
+  (assoc (apply hash-map (-> entity
                       seq
-                      flatten)))
+                      flatten))
+         :db/id
+         (:db/id entity)))
 
 (defn format-account
   "Takes an entity map of an account and formats it for a report"
@@ -115,15 +117,15 @@
   [db as-of-date accounts]
   (map #(assoc %
                :account/balance
-               (calculate-balance db (:db/id %) as-of-date))
+               (calculate-account-balance db (:db/id %) as-of-date))
        accounts))
 
 (defn balance-sheet-report
   "Returns a balance sheet report"
   [db as-of-date]
   (->> (all-accounts db)
-       (set-balances db as-of-date)
        (map entity-map->hash-map)
+       (set-balances db as-of-date)
        (map map-keys)
        (sort-by :account/type)
        group-by-type

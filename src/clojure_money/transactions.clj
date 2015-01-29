@@ -135,7 +135,7 @@
   "Given an account ID, totals the transaction item values for the specified account through the specified date"
   [db account as-of-date]
   (let [account (d/touch (d/entity db account))
-        amounts (d/q '[:find ?amount ?action-name
+        amounts (d/q '[:find ?amount ?action-name ?i ; The ?i value isn't used, but without it, duplicate rows were not returned
                        :in $ ?as-of-date ?account-id
                        :where [?t :transaction/date ?transaction-date]
                        [?t :transaction/items ?i]

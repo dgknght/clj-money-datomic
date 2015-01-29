@@ -231,20 +231,35 @@
                                   :amount (bigdec 100)
                                   :debit-account groceries
                                   :credit-account checking})
+    (add-simple-transaction conn {:transaction/date #datetime "2015-01-12"
+                                  :transaction/description "Kroger"
+                                  :amount (bigdec 10)
+                                  :debit-account checking
+                                  :credit-account groceries})
     {:checking checking :salary salary :groceries groceries}))
 
 ;; calculate-account-balance should sum the polarized transaction item amounts from the inception to the specified date
-(expect-focused (bigdec 0)
+(expect (bigdec 0)
         (let [conn (create-empty-db)
               accounts (calculate-account-balance-setup conn)]
-          (calculate-account-balance (d/db conn) (:groceries accounts) #datetime "2014-12-31")))
+          (calculate-account-balance (d/db conn) (:checking accounts) #datetime "2014-12-31")))
 
-(expect-focused (bigdec 100)
+(expect (bigdec 1000)
         (let [conn (create-empty-db)
               accounts (calculate-account-balance-setup conn)]
-          (calculate-account-balance (d/db conn) (:groceries accounts) #datetime "2015-01-04")))
+          (calculate-account-balance (d/db conn) (:checking accounts) #datetime "2015-01-01")))
 
-(expect-focused (bigdec 200)
+(expect (bigdec 900)
         (let [conn (create-empty-db)
               accounts (calculate-account-balance-setup conn)]
-          (calculate-account-balance (d/db conn) (:groceries accounts) #datetime "2015-12-31")))
+          (calculate-account-balance (d/db conn) (:checking accounts) #datetime "2015-01-04")))
+
+(expect (bigdec 800)
+        (let [conn (create-empty-db)
+              accounts (calculate-account-balance-setup conn)]
+          (calculate-account-balance (d/db conn) (:checking accounts) #datetime "2015-01-11")))
+
+(expect (bigdec 810)
+        (let [conn (create-empty-db)
+              accounts (calculate-account-balance-setup conn)]
+          (calculate-account-balance (d/db conn) (:checking accounts) #datetime "2015-12-31")))
