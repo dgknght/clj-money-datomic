@@ -152,11 +152,12 @@
             (get-balance (d/db conn) id))))
 
 ;; I can add a child account to an existing account
-(expect ["Car"]
+(expect (more-> 1 count
+                "Car" (-> first :account/name))
         (let [conn (create-empty-db)]
           (add-account conn "Savings" :account.type/asset)
           (add-account conn "Car", :account.type/asset, "Savings")
-          (map :account/name (child-accounts (d/db conn) "Savings"))))
+          (child-accounts (d/db conn) "Savings")))
 
 ;; I can find a child account directly with its path
 
