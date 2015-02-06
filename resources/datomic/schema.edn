@@ -25,6 +25,13 @@
   :db/ident :account.type/expense}
 
  {:db/id #db/id[:db.part/db]
+  :db/ident :account/parent
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/one
+  :db/doc "Refers to the parent of the account"
+  :db.install/_attribute :db.part/db}
+
+ {:db/id #db/id[:db.part/db]
   :db/ident :account/balance
   :db/valueType :db.type/bigdec
   :db/cardinality :db.cardinality/one

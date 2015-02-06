@@ -150,3 +150,14 @@
           (let [id (find-account-id-by-path (d/db conn) "Salary")]
             (credit-account conn id (bigdec 100))
             (get-balance (d/db conn) id))))
+
+;; I can add a child account to an existing account
+(expect ["Car"]
+        (let [conn (create-empty-db)]
+          (add-account conn "Savings" :account.type/asset)
+          (add-account conn "Car", :account.type/asset, "Savings")
+          (map :account/name (child-accounts (d/db conn) "Savings"))))
+
+;; I can find a child account directly with its path
+
+;; I can get a list of all root accounts
