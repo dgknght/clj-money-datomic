@@ -1,5 +1,6 @@
 (ns clojure-money.accounts
-  (:require [datomic.api :as d :refer [transact q db]])
+  (:require [datomic.api :as d :refer [transact q db]]
+            [clojure.string :as str])
   (:gen-class))
 
 (defn hydrate-entity
@@ -32,29 +33,35 @@
            parent-id)
         (map #(hydrate-entity db %)))))
 
-(defn find-account-by-path
-  "Finds an account with the specified path"
-  [db path]
-  (->> path
-       (d/q
-         '[:find [?a]
+(defn find-account-id-by-name-and-parent
+  "Returns an id for an account having the specified name and parent"
+  [db parent-id account-name]
+  (if parent-id
+    (d/q '[:find ?a .
+           :in $ ?parent-id ?account-name
+           :where [?a :account/name ?account-name]
+           [?a :account/parent ?parent-id]]
+         db
+         parent-id
+         account-name)
+    (d/q '[:find ?a .
            :in $ ?account-name
            :where [?a :account/name ?account-name]]
-         db)
-       first
-       (d/entity db)
-       d/touch))
+         db
+         account-name)))
 
 (defn find-account-id-by-path
   "Finds an account with the specified path"
   [db path]
-  (->> path
-       (d/q
-         '[:find [?a]
-           :in $ ?account-name
-           :where [?a :account/name ?account-name]]
-         db)
-       first))
+  (let [find-account (partial find-account-id-by-name-and-parent db)]
+    (reduce find-account nil (str/split path #"\/"))))
+
+(defn find-account-by-path
+  "Finds an account with the specified path"
+  [db path]
+  (->> (find-account-id-by-path db path)
+       (d/entity db)
+       d/touch))
 
 (defn resolve-account-id
   "If the parameter is an account id, returns the account. If it is a string, it looks up the account by path"

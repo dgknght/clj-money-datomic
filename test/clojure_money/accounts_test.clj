@@ -26,6 +26,12 @@
           (add-account conn "Checking")
           (find-account-by-path (d/db conn) "Checking")))
 
+;; I can retrieve and account id by path (name, prepended by the name of any parents)
+(expect (more-> true number?)
+        (let [conn (create-empty-db)]
+          (add-account conn "Checking")
+          (find-account-id-by-path (d/db conn) "Checking")))
+
 ;; An account can be an asset, liability, equity, income, or expense
 (expect (more-> 1 count)
         (let [conn (create-empty-db)]
@@ -160,5 +166,10 @@
           (child-accounts (d/db conn) "Savings")))
 
 ;; I can find a child account directly with its path
+(expect (more-> "Car" :account/name)
+        (let [conn (create-empty-db)]
+          (add-account conn "Savings" :account.type/asset)
+          (add-account conn "Car" :account.type/asset "Savings")
+          (find-account-by-path (d/db conn) "Savings/Car")))
 
 ;; I can get a list of all root accounts
