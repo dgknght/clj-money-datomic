@@ -2,6 +2,14 @@
   (:require [datomic.api :as d :refer [transact q db]])
   (:gen-class))
 
+(defn hydrate-entity
+  "Given an ID, returns an entity map with all the entity details"
+  [db id]
+  (->> id
+       first
+       (d/entity db)
+       (d/touch)))
+
 (defn all-accounts
   "Returns all of the accounts in the system"
   [db]
@@ -9,8 +17,7 @@
          '[:find ?a
            :where [?a :account/name]]
          db)
-       (map #(d/entity db (first %)))
-       (map #(d/touch %))))
+       (map #(hydrate-entity db %))))
 
 (declare resolve-account-id)
 (defn child-accounts
@@ -23,8 +30,7 @@
              :where [?a :account/parent ?parent]]
            db
            parent-id)
-         (map #(d/entity db (first %)))
-         (map #(d/touch %)))))
+        (map #(hydrate-entity db %)))))
 
 (defn find-account-by-path
   "Finds an account with the specified path"
