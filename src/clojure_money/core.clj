@@ -47,10 +47,10 @@
 
     (println "all-accounts")
 
-    (let [conn (d/connect uri)
-          accounts (a/all-accounts conn)]
+    (let [db (d/db (d/connect uri))
+          accounts (a/all-accounts db)]
 
       (println (str "found " (count accounts) " account(s)"))
 
-      (doseq [a (a/all-accounts conn)]
+      (doseq [a accounts]
         (println (str (:account/name a) ": " (:account/type a) ": " (:account/balance a)))))))
