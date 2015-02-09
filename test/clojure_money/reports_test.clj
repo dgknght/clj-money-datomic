@@ -1,10 +1,10 @@
 (ns clojure-money.reports-test
   (:require [expectations :refer :all]
-            [datomic.api :as d :refer [db]]
-            [clojure-money.core-test :refer [create-empty-db]]
-            [clojure-money.accounts :refer :all]
-            [clojure-money.transactions :refer :all]
-            [clojure-money.reports :refer :all]))
+            [datomic.api :as d :refer [db]])
+  (:use clojure-money.test-common
+        clojure-money.accounts
+        clojure-money.transactions
+        clojure-money.reports))
 
 (defn populate-db
   "Creates and populates a database"

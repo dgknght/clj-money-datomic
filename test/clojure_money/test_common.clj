@@ -1,4 +1,4 @@
-(ns clojure-money.core-test
+(ns clojure-money.test-common
   (:require [expectations :refer :all]
             [clojure-money.core :refer :all]
             [datomic.api :as d :refer [delete-database create-database transact]]))

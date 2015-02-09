@@ -1,9 +1,9 @@
 (ns clojure-money.transactions-test
   (:require [expectations :refer :all]
-            [datomic.api :as d :refer [db]]
-            [clojure-money.core-test :refer [create-empty-db]]
-            [clojure-money.accounts :refer :all]
-            [clojure-money.transactions :refer :all]))
+            [datomic.api :as d :refer [db]])
+  (:use clojure-money.test-common
+        clojure-money.accounts
+        clojure-money.transactions))
 
 ;; When I add a transaction, it appears in the list of transactions
 (expect (more-> #datetime "2014-12-15" :transaction/date
