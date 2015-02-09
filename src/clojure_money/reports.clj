@@ -1,7 +1,7 @@
 (ns clojure-money.reports
-  (:use clojure-money.accounts
+  (:use clojure-money.common
+        clojure-money.accounts
         clojure-money.transactions
-        clojure-money.core
         clojure.set)
   (:gen-class))
 
