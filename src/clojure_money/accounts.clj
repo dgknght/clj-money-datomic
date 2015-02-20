@@ -20,6 +20,11 @@
          db)
        (map #(hydrate-entity db %))))
 
+(defn root-accounts
+  "Returns the accounts that do not have a parent account"
+  [db]
+  (filter #(not (:account/parent %)) (all-accounts db)))
+
 (declare resolve-account-id)
 (defn child-accounts
   "Returns all of the children of the specified account"

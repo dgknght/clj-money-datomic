@@ -173,3 +173,15 @@
           (find-account-by-path (d/db conn) "Savings/Car")))
 
 ;; I can get a list of all root accounts
+(expect #{"Savings", "Opening Balances"}
+        (let [conn (create-empty-db)]
+          (add-account conn "Savings" :account.type/asset)
+          (add-account conn "Car" :account.type/asset "Savings")
+          (add-account conn "Reserve" :account.type/asset "Savings")
+          (add-account conn "Opening Balances" :account.type/equity)
+          (->> conn
+               d/db
+               root-accounts
+               (map :account/name)
+               set
+               )))
