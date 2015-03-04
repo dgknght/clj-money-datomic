@@ -18,6 +18,8 @@
     (add-account conn "Opening balances" :account.type/equity)
     (add-account conn "Salary" :account.type/income)
     (add-account conn "Groceries" :account.type/expense)
+    (add-account conn "Food" :account.type/expense "Groceries")
+    (add-account conn "Non-food" :account.type/expense "Groceries")
 
     (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
                                   :transaction/description "Opening balance"
@@ -37,12 +39,12 @@
     (add-simple-transaction conn {:transaction/date #inst "2015-01-04"
                                   :transaction/description "Kroger"
                                   :amount (bigdec 100)
-                                  :debit-account "Groceries"
+                                  :debit-account "Groceries/Food"
                                   :credit-account "Credit card"})
     (add-simple-transaction conn {:transaction/date #inst "2015-01-11"
                                   :transaction/description "Kroger"
                                   :amount (bigdec 100)
-                                  :debit-account "Groceries"
+                                  :debit-account "Groceries/Food"
                                   :credit-account "Credit card"})
     (add-simple-transaction conn {:transaction/date #inst "2015-01-15"
                                   :transaction/description "Paycheck"
@@ -52,7 +54,7 @@
     (add-simple-transaction conn {:transaction/date #inst "2015-01-18"
                                   :transaction/description "Kroger"
                                   :amount (bigdec 100)
-                                  :debit-account "Groceries"
+                                  :debit-account "Groceries/Non-food"
                                   :credit-account "Credit card"})
   conn))
 
@@ -84,16 +86,20 @@
         (let [conn (populate-db)]
           (balance-sheet-report (d/db conn) #inst "2015-01-15")))
 
-(expect [{:caption "Income" :value (bigdec 2000) :depth 0 :style :header}
-         {:caption "Salary" :value (bigdec 2000) :depth 0 :style :data}
-         {:caption "Expense" :value (bigdec 300) :depth 0 :style :header}
-         {:caption "Groceries" :value (bigdec 300) :depth 0 :style :data}]
+(expect [{:caption "Income"    :value (bigdec 2000) :depth 0 :style :header}
+         {:caption "Salary"    :value (bigdec 2000) :depth 0 :style :data}
+         {:caption "Expense"   :value (bigdec 300)  :depth 0 :style :header}
+         {:caption "Groceries" :value (bigdec 300)  :depth 0 :style :data}
+         {:caption "Food"      :value (bigdec 200)  :depth 1 :style :data}
+         {:caption "Non-food"  :value (bigdec 100)  :depth 1 :style :data}]
         (let [conn (populate-db)]
           (income-statement-report (d/db conn) #inst "2015-01-01" #inst "2015-01-31")))
 
-(expect [{:caption "Income" :value (bigdec 1000) :depth 0 :style :header}
-         {:caption "Salary" :value (bigdec 1000) :depth 0 :style :data}
-         {:caption "Expense" :value (bigdec 100) :depth 0 :style :header}
-         {:caption "Groceries" :value (bigdec 100) :depth 0 :style :data}]
+(expect [{:caption "Income"    :value (bigdec 1000) :depth 0 :style :header}
+         {:caption "Salary"    :value (bigdec 1000) :depth 0 :style :data}
+         {:caption "Expense"   :value (bigdec 100)  :depth 0 :style :header}
+         {:caption "Groceries" :value (bigdec 100)  :depth 0 :style :data}
+         {:caption "Food"      :value (bigdec 100)  :depth 1 :style :data}
+         {:caption "Non-food"  :value (bigdec 0)    :depth 1 :style :data}] 
         (let [conn (populate-db)]
           (income-statement-report (d/db conn) #inst "2015-01-01" #inst "2015-01-04")))
