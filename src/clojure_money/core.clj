@@ -1,7 +1,7 @@
 (ns clojure-money.core
-  (:require [datomic.api :as d :refer [create-database connect transact q]])
-  (:use clojure-money.common
-        clojure-money.accounts)
+  (:require [datomic.api :as d :refer [create-database connect transact q]]
+            [clojure-money.accounts :refer :all])
+  (:use clojure-money.common)
   (:gen-class))
 
 (defn -main

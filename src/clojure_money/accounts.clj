@@ -1,6 +1,8 @@
 (ns clojure-money.accounts
   (:require [datomic.api :as d :refer [transact q db]]
-            [clojure.string :as str])
+            [clojure.string :as str]
+            [clojure-money.common :as m :refer :all]
+            )
   (:gen-class))
 
 (defn hydrate-entity
@@ -74,37 +76,6 @@
   (cond
     (or (isa? clojure.lang.IPersistentMap identifier) (isa? datomic.Entity identifier)) (:db/id identifier)
     :else (find-account-id-by-path db identifier)))
-
-(def left-side?
-  (d/function '{:lang :clojure
-                :params [account]
-                :code (contains?
-                        #{:account.type/asset :account.type/expense}
-                        (:account/type account))}))
-
-(def right-side?
-  (d/function '{:lang :clojure
-                :params [account]
-                :code (not (clojure-money.accounts/left-side? account))}))
-
-(def polarizer
-  (d/function '{:lang :clojure
-                :params [account action]
-                :code (if (or (and (clojure-money.accounts/left-side? account) (= :transaction-item.action/debit action))
-                              (and (clojure-money.accounts/right-side? account) (= :transaction-item.action/credit action)))
-                        1
-                        -1)}))
-
-(def adjust-balance
-  (d/function '{:lang :clojure
-                :params [db id amount action]
-                :code (let [e (d/entity db id)
-                            account (d/touch e)
-                            pol (clojure-money.accounts/polarizer account action)
-                            current-balance (:account/balance account)
-                            polarized-amount (* pol amount)
-                            new-balance (+ current-balance polarized-amount)]
-                        [[:db/add id :account/balance new-balance]])}))
 
 (defn debit-account
   "Debits the specified account"

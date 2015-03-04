@@ -64,15 +64,6 @@
           {}
           grouped-accounts))
 
-(defn entity-map->hash-map
-  "Accepts an EntityMap and returns a run-of-the-mill hash map"
-  [entity]
-  (assoc (apply hash-map (-> entity
-                      seq
-                      flatten))
-         :db/id
-         (:db/id entity)))
-
 (defn format-account
   "Takes an entity map of an account and formats it for a report"
   [account]

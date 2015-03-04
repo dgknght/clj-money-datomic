@@ -1,7 +1,9 @@
 (ns clojure-money.accounts-test
   (:require [expectations :refer :all]
             [datomic.api :as d :refer [db]]
-            [clojure-money.accounts :refer :all])
+            [clojure-money.accounts :refer :all]
+            [clojure-money.common :refer :all]
+            )
   (:use clojure-money.test-common))
 
 ;; After I save an account, it appears in the list of all accounts
