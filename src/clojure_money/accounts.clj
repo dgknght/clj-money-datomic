@@ -22,6 +22,28 @@
          db)
        (map #(hydrate-entity db %))))
 
+(defn append-children
+  "Appends child accounts to their parents"
+  [account all-accounts]
+  (let [children (->> all-accounts
+                      (filter #(= (:db/id account) (:db/id (:account/parent %))))
+                      (map #(dissoc % :account/parent)))]
+    (if (seq children)
+      (assoc account :children children) #_(insert recursion here)
+      account)))
+
+(defn stacked-accounts
+  "Returns all accounts in the system with children listed under their
+  parents with the key :children"
+  [db]
+  (let [all (->> db
+                 all-accounts
+                 (sort #(compare (:account/name %1) (:account/name %2)))
+                 (map entity-map->hash-map))]
+    (->> all
+         (filter #(not (:account/parent %)))
+         (map #(append-children % all)))))
+
 (defn root-accounts
   "Returns the accounts that do not have a parent account"
   [db]

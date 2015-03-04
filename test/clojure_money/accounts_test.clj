@@ -187,3 +187,13 @@
                (map :account/name)
                set
                )))
+
+;; Stacked accounts have children listed under their parents
+(expect (more-> "Savings" (-> first :account/name)
+                "Car" (-> first :children first :account/name)
+                "Reserve" (-> first :children second :account/name)) 
+        (let [conn (create-empty-db)]
+          (add-account conn "Savings" :account.type/asset)
+          (add-account conn "Car" :account.type/asset "Savings")
+          (add-account conn "Reserve" :account.type/asset "Savings")
+          (stacked-accounts (d/db conn))))
