@@ -12,6 +12,8 @@
   (let [conn (create-empty-db)]
     (add-account conn "Checking" :account.type/asset)
     (add-account conn "Savings" :account.type/asset)
+    (add-account conn "Car" :account.type/asset "Savings")
+    (add-account conn "Reserve" :account.type/asset "Savings")
     (add-account conn "Credit card" :account.type/liability)
     (add-account conn "Opening balances" :account.type/equity)
     (add-account conn "Salary" :account.type/income)
@@ -20,7 +22,12 @@
     (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
                                   :transaction/description "Opening balance"
                                   :amount (bigdec 20000)
-                                  :debit-account "Savings"
+                                  :debit-account "Savings/Reserve"
+                                  :credit-account "Opening balances"})
+    (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
+                                  :transaction/description "Opening balance"
+                                  :amount (bigdec 12000)
+                                  :debit-account "Savings/Car"
                                   :credit-account "Opening balances"})
     (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
                                   :transaction/description "Paycheck"
@@ -50,26 +57,30 @@
   conn))
 
 ; Uses the current balances
-(expect [{:caption "Assets" :value (bigdec 22000) :depth 0 :style :header}
-         {:caption "Checking" :value (bigdec 2000) :depth 0 :style :data}
-         {:caption "Savings" :value (bigdec 20000) :depth 0 :style :data}
-         {:caption "Liabilities" :value (bigdec 300) :depth 0 :style :header}
-         {:caption "Credit card" :value (bigdec 300) :depth 0 :style :data}
-         {:caption "Equity" :value (bigdec 21700) :depth 0 :style :header}
-         {:caption "Opening balances" :value (bigdec 20000) :depth 0 :style :data}
-         {:caption "Retained earnings" :value (bigdec 1700) :depth 0 :style :data}]
+(expect [{:caption "Assets"            :value (bigdec 34000) :depth 0 :style :header}
+         {:caption "Checking"          :value (bigdec 2000)  :depth 0 :style :data}
+         {:caption "Savings"           :value (bigdec 32000) :depth 0 :style :data}
+         {:caption "Car"               :value (bigdec 12000) :depth 1 :style :data}
+         {:caption "Reserve"           :value (bigdec 20000) :depth 1 :style :data}
+         {:caption "Liabilities"       :value (bigdec 300)   :depth 0 :style :header}
+         {:caption "Credit card"       :value (bigdec 300)   :depth 0 :style :data}
+         {:caption "Equity"            :value (bigdec 33700) :depth 0 :style :header}
+         {:caption "Opening balances"  :value (bigdec 32000) :depth 0 :style :data}
+         {:caption "Retained earnings" :value (bigdec 1700)  :depth 0 :style :data}]
         (let [conn (populate-db)]
           (balance-sheet-report (d/db conn) #inst "2015-01-31")))
 
 ; Uses balances as of a prior date
-(expect [{:caption "Assets" :value (bigdec 22000) :depth 0 :style :header}
-         {:caption "Checking" :value (bigdec 2000) :depth 0 :style :data}
-         {:caption "Savings" :value (bigdec 20000) :depth 0 :style :data}
-         {:caption "Liabilities" :value (bigdec 200) :depth 0 :style :header}
-         {:caption "Credit card" :value (bigdec 200) :depth 0 :style :data}
-         {:caption "Equity" :value (bigdec 21800) :depth 0 :style :header}
-         {:caption "Opening balances" :value (bigdec 20000) :depth 0 :style :data}
-         {:caption "Retained earnings" :value (bigdec 1800) :depth 0 :style :data}]
+(expect [{:caption "Assets"            :value (bigdec 34000) :depth 0 :style :header}
+         {:caption "Checking"          :value (bigdec 2000)  :depth 0 :style :data}
+         {:caption "Savings"           :value (bigdec 32000) :depth 0 :style :data}
+         {:caption "Car"               :value (bigdec 12000) :depth 1 :style :data}
+         {:caption "Reserve"           :value (bigdec 20000) :depth 1 :style :data}
+         {:caption "Liabilities"       :value (bigdec 200)   :depth 0 :style :header}
+         {:caption "Credit card"       :value (bigdec 200)   :depth 0 :style :data}
+         {:caption "Equity"            :value (bigdec 33800) :depth 0 :style :header}
+         {:caption "Opening balances"  :value (bigdec 32000) :depth 0 :style :data}
+         {:caption "Retained earnings" :value (bigdec 1800)  :depth 0 :style :data}]
         (let [conn (populate-db)]
           (balance-sheet-report (d/db conn) #inst "2015-01-15")))
 

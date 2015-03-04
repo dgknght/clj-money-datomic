@@ -40,8 +40,8 @@
   [account]
   (-> account
       (rename-keys {:account/name :caption :account/balance :value})
-      (select-keys [:caption :value :account/type])
-      (assoc :depth 0 :style :data)))
+      (select-keys [:caption :value :account/type :depth])
+      (assoc :style :data)))
 
 (defn sum
   "Returns the sum of the values of the specified records"
@@ -60,7 +60,10 @@
   the total for the accounts in each group"
   [grouped-accounts]
   (reduce (fn [result [k accounts]]
-            (assoc result k [accounts (sum accounts)]))
+            (let [group-total (->> accounts
+                                   (filter #(= 0 (:depth %)))
+                                   sum)]
+              (assoc result k [accounts group-total])))
           {}
           grouped-accounts))
 
@@ -104,23 +107,44 @@
           []
           account-types))
 
+(declare set-balances)
+(defn set-balance
+  "Gets the balance for the specified account over the specified time"
+  [db from to account]
+  (let [calculated (calculate-account-balance db (:db/id account) from to)
+        children (set-balances db from to (:children account))
+        sum-of-children (reduce #(+ %1 (:account/balance %2)) 0 children)
+        final-balance (+ calculated sum-of-children)]
+    (assoc account :account/balance final-balance :children children)))
+
 (defn set-balances
   "Sets the :account/balance value for each account based on the specified date"
   ([db to accounts] (set-balances db earliest-date to accounts))
   ([db from to accounts]
-  (map #(assoc %
-               :account/balance
-               (calculate-account-balance db (:db/id %) from to))
-       accounts)))
+   (map #(set-balance db from to %) accounts)))
+
+(declare flatten-accounts)
+(defn flatten-account
+  "Accepts an account with a :children attribute and returns a list containing 
+  the specified account, followed by the children"
+  [account depth]
+  (let [children (flatten-accounts (:children account) (inc depth))]
+    (cons (assoc (dissoc account :children) :depth depth)
+          children)))
+
+(defn flatten-accounts
+  "Accepts stacked accounts and returns a flat list with a new depth attribute"
+  ([accounts] (flatten-accounts accounts 0))
+  ([accounts depth]
+   (reduce #(concat %1 (flatten-account %2 depth)) [] accounts)))
 
 (defn balance-sheet-report
   "Returns a balance sheet report"
   [db as-of-date]
-  (->> (all-accounts db)
-       (map entity-map->hash-map)
+  (->> (stacked-accounts db)
        (set-balances db as-of-date)
+       flatten-accounts
        (map map-keys)
-       (sort-by :account/type)
        group-by-type
        append-totals
        calculate-retained-earnings
@@ -130,9 +154,9 @@
 (defn income-statement-report
   "Returns an income statement report"
   [db from to]
-  (->> (all-accounts db)
-       (map entity-map->hash-map)
+  (->> (stacked-accounts db)
        (set-balances db from to)
+       flatten-accounts
        (map map-keys)
        (sort-by :account/type)
        (group-by-type)
