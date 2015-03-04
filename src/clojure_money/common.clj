@@ -63,8 +63,6 @@
 (defn entity-map->hash-map
   "Accepts an EntityMap and returns a run-of-the-mill hash map"
   [entity]
-  (assoc (apply hash-map (-> entity
-                      seq
-                      flatten))
+  (assoc (into {} entity)
          :db/id
          (:db/id entity)))
