@@ -5,14 +5,6 @@
             )
   (:gen-class))
 
-(defn hydrate-entity
-  "Given an ID, returns an entity map with all the entity details"
-  [db id]
-  (->> id
-       first
-       (d/entity db)
-       (d/touch)))
-
 (defn all-accounts
   "Returns all of the accounts in the system"
   [db]
@@ -20,7 +12,7 @@
          '[:find ?a
            :where [?a :account/name]]
          db)
-       (map #(hydrate-entity db %))))
+       (map #(m/hydrate-entity db %))))
 
 (defn append-children
   "Appends child accounts to their parents"

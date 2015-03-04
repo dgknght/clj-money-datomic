@@ -66,3 +66,11 @@
   (assoc (into {} entity)
          :db/id
          (:db/id entity)))
+
+(defn hydrate-entity
+  "Given an ID, returns an entity map with all the entity details"
+  [db id]
+  (->> id
+       first
+       (d/entity db)
+       (d/touch)))
