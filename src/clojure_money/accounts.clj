@@ -80,9 +80,11 @@
 (defn find-account-by-path
   "Finds an account with the specified path"
   [db path]
-  (->> (find-account-id-by-path db path)
-       (d/entity db)
-       d/touch))
+  (let [id (find-account-id-by-path db path)]
+    (if id
+      (->> id
+           (d/entity db)
+           d/touch))))
 
 (defn resolve-account-id
   "If the parameter is an account id, returns the account. If it is a string, it looks up the account by path"
