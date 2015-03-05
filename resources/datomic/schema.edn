@@ -106,6 +106,47 @@
   :db/doc "The date on which the budget become effective"
   :db.install/_attribute :db.part/db}
 
+ {:db/id #db/id[:db.part/db]
+  :db/ident :budget/items
+  :db/isComponent true
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/many
+  :db/doc "The items that make up the budget"
+  :db.install/_attribute :db.part/db}
+
+  ;; Budget Items
+
+ {:db/id #db/id[:db.part/db]
+  :db/ident :budget-item/account
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/one
+  :db/doc "The account referenced by this budget item"
+  :db.install/_attribute :db.part/db}
+
+ {:db/id #db/id[:db.part/db]
+  :db/ident :budget-item/periods
+  :db/isComponent true
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/many
+  :db/doc "The the budgeted amounts for each period in this budget for this account"
+  :db.install/_attribute :db.part/db}
+
+ ;; Budget Item Periods
+
+ {:db/id #db/id[:db.part/db]
+  :db/ident :budget-item-period/index
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/doc "The zero-based oridinal position of the period within the budget"
+  :db.install/_attribute :db.part/db}
+
+ {:db/id #db/id[:db.part/db]
+  :db/ident :budget-item-period/amount
+  :db/valueType :db.type/bigdec
+  :db/cardinality :db.cardinality/one
+  :db/doc "The amount budget for this period"
+  :db.install/_attribute :db.part/db}
+
  ;; Functions
 
  {:db/id #db/id[:db.part/user]
