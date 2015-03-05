@@ -99,6 +99,13 @@
   :db/doc "The name of the budget"
   :db.install/_attribute :db.part/db}
 
+ {:db/id #db/id [:db.part/db]
+  :db/ident :budget/start-date
+  :db/valueType :db.type/instant
+  :db/cardinality :db.cardinality/one
+  :db/doc "The date on which the budget become effective"
+  :db.install/_attribute :db.part/db}
+
  ;; Functions
 
  {:db/id #db/id[:db.part/user]

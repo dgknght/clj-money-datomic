@@ -14,8 +14,9 @@
 
 (defn add-budget
   "Adds a new budget to the system"
-  [conn budget-name]
+  [conn budget-name start-date]
   (let [new-id (d/tempid :db.part/user)
         tx-data {:db/id new-id
-                 :budget/name budget-name}]
+                 :budget/name budget-name
+                 :budget/start-date start-date}]
     @(d/transact conn [tx-data])))
