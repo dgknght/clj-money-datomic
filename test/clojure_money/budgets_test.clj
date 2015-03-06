@@ -56,6 +56,32 @@
                  d/touch
                  :account/name))))
 
-;; TODO Add by explicit monthly values, monthly average, annual total
+;; If I add a budget item for an account that already has a budget item,
+;; a new budget item is not created
+(expect 1
+        (let [conn (prepare-db)]
+          (add-budget conn "2015" #inst "2015-01-01")
+          (add-budget-item conn "2015" "Groceries" (repeat 12 (bigdec 100)))
+          (add-budget-item conn "2015" "Groceries" (repeat 12 (bigdec 300)))
+          (-> conn
+              d/db
+              (find-budget-by-name "2015")
+              :budget/items
+              count)))
 
-;; Each account should only be listed one time for a given budget
+;; If I add a budget item for an account that already has a budget item,
+;; the specified values overwrite the existing values
+(expect-focused [300M 300M 300M 300M 300M 300M 300M 300M 300M 300M 300M 300M]
+        (let [conn (prepare-db)]
+          (add-budget conn "2015" #inst "2015-01-01")
+          (add-budget-item conn "2015" "Groceries" (repeat 12 (bigdec 100)))
+          (add-budget-item conn "2015" "Groceries" (repeat 12 (bigdec 300)))
+          (let [first-item (-> conn
+                               d/db
+                               (find-budget-by-name "2015")
+                               :budget/items
+                               first)]
+            (->> first-item
+                 :budget-item/periods
+                 (sort-by :budget-item-period/index)
+                 (map :budget-item-period/amount)))))

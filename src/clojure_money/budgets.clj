@@ -34,6 +34,15 @@
        first
        (m/hydrate-entity db)))
 
+(defn find-budget-item
+  "Find the item in a budget for the specified account"
+  [budget account]
+  (->>
+    budget
+    :budget/items
+    (filter #(= (:db/id account) (:db/id (:budget-item/account %))))
+    first))
+
 (defn add-budget-item
   "Adds a line item to a budget"
   [conn budget-or-name account-or-path amounts]
@@ -45,12 +54,16 @@
                   account-or-path)
         periods (map-indexed
                   #(hash-map :budget-item-period/index %1 :budget-item-period/amount %2)
-                  amounts)
-        tx-data [{:db/id (:db/id budget)
-                  :budget/items [{:budget-item/account (:db/id account)
-                                  :budget-item/periods periods}]}]]
+                  amounts)]
 
     (if-not budget (throw (IllegalArgumentException. (str "Unable to find a budget named \"" budget-or-name "\""))))
     (if-not account (throw (IllegalArgumentException. (str "Unable to find an account with the path \"" account-or-path "\""))))
 
-    @(d/transact conn tx-data)))
+    (let [existing (find-budget-item budget account)
+          insert [{:db/id (:db/id budget)
+                   :budget/items [{:budget-item/account (:db/id account)
+                                   :budget-item/periods periods}]}]
+          tx-data (if existing
+                    (cons [:db.fn/retractEntity (:db/id existing)] insert)
+                    insert)]
+      @(d/transact conn tx-data))))
