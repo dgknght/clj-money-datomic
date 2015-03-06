@@ -71,7 +71,7 @@
 
 ;; If I add a budget item for an account that already has a budget item,
 ;; the specified values overwrite the existing values
-(expect-focused [300M 300M 300M 300M 300M 300M 300M 300M 300M 300M 300M 300M]
+(expect [300M 300M 300M 300M 300M 300M 300M 300M 300M 300M 300M 300M]
         (let [conn (prepare-db)]
           (add-budget conn "2015" #inst "2015-01-01")
           (add-budget-item conn "2015" "Groceries" (repeat 12 (bigdec 100)))
