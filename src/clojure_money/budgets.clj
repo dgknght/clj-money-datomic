@@ -28,8 +28,8 @@
   (->> (d/q
          '[:find ?b
            :in $ ?budget-name
-           :where [?b :budget/name ?budget-name]],
-         db,
+           :where [?b :budget/name ?budget-name]]
+         db
          budget-name)
        first
        (m/hydrate-entity db)))
