@@ -163,3 +163,21 @@
        append-totals
        (interleave-summaries [:account.type/income :account.type/expense])
        strip-unneeded-values))
+
+(defn append-budget-amounts
+  [budget-or-name accounts]
+  )
+
+(defn budget-report
+  "Returns a budget report"
+  [db budget-or-name]
+  (->> (stacked-accounts db)
+       (set-balances db from to)
+       (append-budget-amounts budget-or-name)
+       flatten-accounts
+       (map map-keys)
+       (sort-by :account/type)
+       (group-by-type)
+       append-totals
+       (interleave-summaries [:account.type/income :account.type/expense])
+       strip-unneeded-values))
