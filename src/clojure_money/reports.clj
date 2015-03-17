@@ -175,7 +175,7 @@
   (let [budget (resolve-budget db budget-or-name)]
     (->> (stacked-accounts db)
          (set-balances db (:budget/start-date budget) (budget-end-date budget))
-         (append-budget-amounts budget-or-name)
+         (append-budget-amounts budget)
          flatten-accounts
          (map map-keys)
          (sort-by :account/type)
