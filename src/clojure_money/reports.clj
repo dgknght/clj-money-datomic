@@ -172,13 +172,14 @@
 (defn budget-report
   "Returns a budget report"
   [db budget-or-name]
-  #_(->> (stacked-accounts db)
-       (set-balances db from to)
-       (append-budget-amounts budget-or-name)
-       flatten-accounts
-       (map map-keys)
-       (sort-by :account/type)
-       (group-by-type)
-       append-totals
-       (interleave-summaries [:account.type/income :account.type/expense])
-       strip-unneeded-values))
+  (let [budget (resolve-budget db budget-or-name)]
+    (->> (stacked-accounts db)
+         (set-balances db (:budget/start-date budget) (budget-end-date budget))
+         (append-budget-amounts budget-or-name)
+         flatten-accounts
+         (map map-keys)
+         (sort-by :account/type)
+         (group-by-type)
+         append-totals
+         (interleave-summaries [:account.type/income :account.type/expense])
+         strip-unneeded-values)))

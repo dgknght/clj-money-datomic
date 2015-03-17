@@ -1,7 +1,9 @@
 (ns clojure-money.budgets
   (:require [datomic.api :as d :refer [transact q db]]
             [clojure-money.common :as m :refer :all]
-            [clojure-money.accounts :refer :all])
+            [clojure-money.accounts :refer :all]
+            [clj-time.core :as t]
+            [clj-time.coerce :as c])
   (:gen-class))
 
 (defn all-budgets
@@ -69,3 +71,12 @@
                     (cons [:db.fn/retractEntity (:db/id existing)] insert)
                     insert)]
       @(d/transact conn tx-data))))
+
+(defn budget-end-date
+  "Returns the end date for the specified budget"
+  [budget]
+  (-> (:budget/start-date budget)
+      c/from-date
+      (t/plus (t/years 1))
+      (t/minus (t/days 1))
+      c/to-date))

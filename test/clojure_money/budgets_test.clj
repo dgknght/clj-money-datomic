@@ -85,3 +85,9 @@
                  :budget-item/periods
                  (sort-by :budget-item-period/index)
                  (map :budget-item-period/amount)))))
+
+;; Given a budget, I should be able to get the end date
+(expect #inst "2015-12-31"
+        (let [conn (prepare-db)]
+          (add-budget conn "2015" #inst "2015-01-01")
+          (budget-end-date (find-budget-by-name (d/db conn) "2015"))))
