@@ -93,6 +93,13 @@
     (or (isa? clojure.lang.IPersistentMap identifier) (isa? datomic.Entity identifier)) (:db/id identifier)
     :else (find-account-id-by-path db identifier)))
 
+(defn resolve-account
+  "Resolves the information into an account id. The input may be a path, account entity, or id"
+  [db token]
+  (cond (string? token) (find-account-by-path db token)
+        (integer? token) (d/entity db token)
+        :else token))
+
 (defn debit-account
   "Debits the specified account"
   [conn id amount]

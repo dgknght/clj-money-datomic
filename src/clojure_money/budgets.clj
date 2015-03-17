@@ -43,15 +43,17 @@
     (filter #(= (:db/id account) (:db/id (:budget-item/account %))))
     first))
 
+(defn resolve-budget
+  [db budget-or-name]
+  (if (string? budget-or-name)
+    (find-budget-by-name db budget-or-name)
+    budget-or-name))
+
 (defn add-budget-item
   "Adds a line item to a budget"
   [conn budget-or-name account-or-path amounts]
-  (let [budget (if (string? budget-or-name)
-                 (find-budget-by-name (d/db conn) budget-or-name)
-                 budget-or-name)
-        account (if (string? account-or-path)
-                  (find-account-by-path (d/db conn) account-or-path)
-                  account-or-path)
+  (let [budget (resolve-budget (d/db conn) budget-or-name)
+        account (resolve-account (d/db conn) account-or-path)
         periods (map-indexed
                   #(hash-map :budget-item-period/index %1 :budget-item-period/amount %2)
                   amounts)]

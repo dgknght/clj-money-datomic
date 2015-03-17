@@ -1,6 +1,7 @@
 (ns clojure-money.reports
   (:use clojure-money.common
         clojure-money.accounts
+        clojure-money.budgets
         clojure-money.transactions
         clojure.set)
   (:gen-class))
@@ -171,7 +172,7 @@
 (defn budget-report
   "Returns a budget report"
   [db budget-or-name]
-  (->> (stacked-accounts db)
+  #_(->> (stacked-accounts db)
        (set-balances db from to)
        (append-budget-amounts budget-or-name)
        flatten-accounts

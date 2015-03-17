@@ -70,13 +70,6 @@
       [:adjust-balance account amount action])
     items))
 
-(defn resolve-account
-  "Resolves the information into an account id. The input may be a path, account entity, or id"
-  [db token]
-  (cond (string? token) (find-account-by-path db token)
-        (integer? token) (d/entity db token)
-        :else token))
-
 (defn resolve-transaction-item-data
   "Resolves references inside transaction item data"
   [db data]
