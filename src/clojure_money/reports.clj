@@ -3,6 +3,7 @@
         clojure-money.accounts
         clojure-money.budgets
         clojure-money.transactions
+        clojure-money.util
         clojure.set)
   (:gen-class))
 
@@ -13,7 +14,14 @@
 (defn strip-unneeded-values
   "Removes values that are unneeded for reporting purposes"
   [report-data]
-  (map #(select-keys % [:caption :value :depth :style]) report-data))
+  (map #(select-keys % [:caption
+                        :value
+                        :depth
+                        :style
+                        :budget
+                        :difference
+                        :percent-difference
+                        :actual-per-month]) report-data))
 
 (defn group-by-type
   "Takes a list of accounts and returns a hash with account types as keys,
@@ -41,7 +49,6 @@
   [account]
   (-> account
       (rename-keys {:account/name :caption :account/balance :value})
-      (select-keys [:caption :value :account/type :depth])
       (assoc :style :data)))
 
 (defn sum
@@ -167,7 +174,10 @@
 
 (defn append-budget-amounts
   [budget-or-name accounts]
-  )
+  (map #(assoc % :budget 0
+                 :difference 0
+                 :percent-difference 0
+                 :actual-per-month 0) accounts))
 
 (defn budget-report
   "Returns a budget report"
