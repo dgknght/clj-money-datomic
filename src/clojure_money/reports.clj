@@ -172,20 +172,27 @@
        (interleave-summaries [:account.type/income :account.type/expense])
        strip-unneeded-values))
 
-(defn append-budget-amounts
-  [budget-or-name accounts]
-  (map #(assoc % :budget 0
-                 :difference 0
-                 :percent-difference 0
-                 :actual-per-month 0) accounts))
+(defn append-budget-amount
+  [db budget periods account]
+  (let [children (map #(append-budget-amount db budget periods %) (:children account))
+        budget-amount (+ (reduce #(+ %1 (:budget %2)) 0 children) (get-budget-amount db budget account periods))
+        difference (- budget-amount (:account/balance account))
+        percent-difference (if (= budget-amount 0) 0 (with-precision 2 (/ difference budget-amount)))
+        actual-per-month (with-precision 2  (/ (:account/balance account) periods))]
+    (assoc account :budget budget-amount
+                   :difference difference
+                   :percent-difference percent-difference
+                   :actual-per-month actual-per-month
+                   :children children
+                   )))
 
 (defn budget-report
-  "Returns a budget report"
-  [db budget-or-name]
+  "Returns a budget using the specified budget and including the specified periods"
+  [db budget-or-name periods]
   (let [budget (resolve-budget db budget-or-name)]
     (->> (stacked-accounts db)
          (set-balances db (:budget/start-date budget) (budget-end-date budget))
-         (append-budget-amounts budget)
+         (map #(append-budget-amount db budget periods %))
          flatten-accounts
          (map map-keys)
          (sort-by :account/type)

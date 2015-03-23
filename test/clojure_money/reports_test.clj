@@ -117,5 +117,8 @@
          {:caption "Groceries" :budget  (bigdec 400) :actual  (bigdec 300) :difference (bigdec -100) :percent-difference (bigdec -0.250) :actual-per-month  (bigdec 300) :depth 0 :style :data }
          {:caption "Food"      :budget  (bigdec 250) :actual  (bigdec 200) :difference  (bigdec -50) :percent-difference (bigdec -0.200) :actual-per-month  (bigdec 200) :depth 1 :style :data }
          {:caption "Non-food"  :budget  (bigdec 150) :actual  (bigdec 100) :difference  (bigdec -50) :percent-difference (bigdec -0.333) :actual-per-month  (bigdec 100) :depth 1 :style :data }]
-        (let [conn (populate-db)]
-          (budget-report (d/db conn) "2015")))
+        (let [conn (populate-db)
+              result (budget-report (d/db conn) "2015" 1)]
+          (doseq [row result]
+            (println row))
+          result))
