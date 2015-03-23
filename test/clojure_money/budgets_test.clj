@@ -91,3 +91,10 @@
         (let [conn (prepare-db)]
           (add-budget conn "2015" #inst "2015-01-01")
           (budget-end-date (find-budget-by-name (d/db conn) "2015"))))
+
+;; Given a budget, an account, and a number of periods, I should be able to get the budget amount
+(expect (bigdec 300)
+        (let [conn (prepare-db)]
+          (add-budget conn "2015" #inst "2015-01-01")
+          (add-budget-item conn "2015" "Groceries" (repeat 12 (bigdec 100)))
+          (get-budget-amount (d/db conn) "2015" "Groceries" 3)))

@@ -80,3 +80,13 @@
       (t/plus (t/years 1))
       (t/minus (t/days 1))
       c/to-date))
+
+(defn get-budget-amount
+  "Returns the amount specified in the given budget for the given account over the given number of periods"
+  [db budget-or-name account-or-name periods]
+  (let [budget (resolve-budget db budget-or-name)
+        account (resolve-account db account-or-name)
+        item (find-budget-item budget account)]
+    (reduce #(+ %1 (:budget-item-period/amount %2))
+            0
+            (take periods (:budget-item/periods item)))))
