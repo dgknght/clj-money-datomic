@@ -53,24 +53,24 @@
 
 (defn sum
   "Returns the sum of the values of the specified records"
-  [accounts]
-  (reduce #(+ %1 (:value %2)) 0 accounts))
+  [ks accounts]
+  (zipmap ks (map (fn [k] (reduce #(+ %1 (k %2)) 0 accounts)) ks)))
 
 ;; Input looks like
 ;; {:account.type/asset [{:caption "Checking" :value 100 :depth 0 :style :data}
 ;;                       {:caption "Savings"  :value 150 :depth 0 :style :data}]}
 ;; Output looks like
 ;; {:account.type/asset [[{:caption "Checking" :value 100 :depth 0 :style :data}
-;;                        {:caption "Savings"  :value 150 :depth 0 :style :data}] 250]}
+;;                        {:caption "Savings"  :value 150 :depth 0 :style :data}] {:value 250}]}
 (defn append-totals
   "Takes a hash with account types for keys and a list of accounts for values and
   converts the list of accounts into a vector containing the list of accounts and
   the total for the accounts in each group"
-  [grouped-accounts]
+  [ks grouped-accounts]
   (reduce (fn [result [k accounts]]
             (let [group-total (->> accounts
                                    (filter #(= 0 (:depth %)))
-                                   sum)]
+                                   (sum ks))]
               (assoc result k [accounts group-total])))
           {}
           grouped-accounts))
@@ -107,10 +107,9 @@
   "Takes a list of accounts grouped by account type interleaves account type summaries"
   [account-types grouped-accounts]
   (reduce (fn [result t]
-            (apply vector (concat (conj result {:caption (t account-type-caption-map)
-                                                :value (last (t grouped-accounts))
-                                                :style :header
-                                                :depth 0})
+            (apply vector (concat (conj result (merge {:caption (t account-type-caption-map)
+                                                       :style :header
+                                                       :depth 0 }(last (t grouped-accounts))))
                                   (first (t grouped-accounts)))))
           []
           account-types))
@@ -154,7 +153,7 @@
        flatten-accounts
        (map map-keys)
        group-by-type
-       append-totals
+       (append-totals [:value])
        calculate-retained-earnings
        (interleave-summaries balance-sheet-account-types)
        strip-unneeded-values))
@@ -168,7 +167,7 @@
        (map map-keys)
        (sort-by :account/type)
        (group-by-type)
-       append-totals
+       (append-totals [:value])
        (interleave-summaries [:account.type/income :account.type/expense])
        strip-unneeded-values))
 
@@ -197,6 +196,6 @@
          (map map-keys)
          (sort-by :account/type)
          (group-by-type)
-         append-totals
+         (append-totals [:value :budget])
          (interleave-summaries [:account.type/income :account.type/expense])
          strip-unneeded-values)))
