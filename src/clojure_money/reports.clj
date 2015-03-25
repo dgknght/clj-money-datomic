@@ -179,11 +179,10 @@
                    :children children)))
 
 (defn append-analysis
-  [row periods]
-  (let [budget-amount (:budget row)
-        actual (:value row)
-        difference (- actual budget-amount)
-        percent-difference (if (= budget-amount 0) 0 (with-precision 3 (/ difference budget-amount)))
+  [{budget-amount :budget actual :value :as row} periods]
+  (let [difference (- actual budget-amount)
+        percent-difference (if (not= budget-amount 0)
+                             (with-precision 3 (/ difference budget-amount)))
         actual-per-month (with-precision 2  (/ actual periods))]
     (assoc row :difference difference
            :percent-difference percent-difference
