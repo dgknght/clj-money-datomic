@@ -32,8 +32,8 @@
 (defn calculate-retained-earnings
   "Takes a map of accounts grouped by type and inserts a 'Retained earnings'
   entry into the equity accounts based on the income and expense values"
-  [{[_ income] :account.type/income
-    [_ expense] :account.type/expense
+  [{[_ {income :value}] :account.type/income
+    [_ {expense :value}] :account.type/expense
     :as grouped-accounts}]
   (let [retained-earnings (- income expense)]
     (-> grouped-accounts
@@ -41,7 +41,7 @@
                                                       :value retained-earnings
                                                       :style :data
                                                       :depth 0}))
-        (update-in [:account.type/equity 1] #(+ % retained-earnings)))))
+        (update-in [:account.type/equity 1 :value] #(+ % retained-earnings)))))
 
 (defn map-keys
   "Takes a map containing datomic keys and returns a map with 
