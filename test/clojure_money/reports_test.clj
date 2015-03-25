@@ -111,14 +111,11 @@
           (income-statement-report (d/db conn) #inst "2015-01-01" #inst "2015-01-04")))
 
 ; A budget report compares budgeted amounts to actual amounts
-(expect-focused [{:caption "Income"    :budget (bigdec 2200) :actual (bigdec 2000) :difference (bigdec -200) :percent-difference (bigdec -0.090) :actual-per-month (bigdec 2000) :depth 0 :style :header}
-         {:caption "Salary"    :budget (bigdec 2200) :actual (bigdec 2000) :difference (bigdec -200) :percent-difference (bigdec -0.090) :actual-per-month (bigdec 2000) :depth 0 :style :data}
-         {:caption "Expense"   :budget  (bigdec 400) :actual  (bigdec 300) :difference (bigdec -100) :percent-difference (bigdec -0.250) :actual-per-month  (bigdec 300) :depth 0 :style :header }
-         {:caption "Groceries" :budget  (bigdec 400) :actual  (bigdec 300) :difference (bigdec -100) :percent-difference (bigdec -0.250) :actual-per-month  (bigdec 300) :depth 0 :style :data }
-         {:caption "Food"      :budget  (bigdec 250) :actual  (bigdec 200) :difference  (bigdec -50) :percent-difference (bigdec -0.200) :actual-per-month  (bigdec 200) :depth 1 :style :data }
-         {:caption "Non-food"  :budget  (bigdec 150) :actual  (bigdec 100) :difference  (bigdec -50) :percent-difference (bigdec -0.333) :actual-per-month  (bigdec 100) :depth 1 :style :data }]
-        (let [conn (populate-db)
-              result (budget-report (d/db conn) "2015" 1)]
-          (doseq [row result]
-            (println row))
-          result))
+(expect [{:caption "Income"    :budget (bigdec 2000) :value (bigdec 2000) :difference    (bigdec 0) :percent-difference      (bigdec 0) :actual-per-month (bigdec 2000) :depth 0 :style :header}
+         {:caption "Salary"    :budget (bigdec 2000) :value (bigdec 2000) :difference    (bigdec 0) :percent-difference      (bigdec 0) :actual-per-month (bigdec 2000) :depth 0 :style :data}
+         {:caption "Expense"   :budget  (bigdec 400) :value  (bigdec 300) :difference (bigdec -100) :percent-difference (bigdec -0.250) :actual-per-month  (bigdec 300) :depth 0 :style :header }
+         {:caption "Groceries" :budget  (bigdec 400) :value  (bigdec 300) :difference (bigdec -100) :percent-difference (bigdec -0.250) :actual-per-month  (bigdec 300) :depth 0 :style :data }
+         {:caption "Food"      :budget  (bigdec 250) :value  (bigdec 200) :difference  (bigdec -50) :percent-difference (bigdec -0.200) :actual-per-month  (bigdec 200) :depth 1 :style :data }
+         {:caption "Non-food"  :budget  (bigdec 150) :value  (bigdec 100) :difference  (bigdec -50) :percent-difference (bigdec -0.333) :actual-per-month  (bigdec 100) :depth 1 :style :data }]
+        (let [conn (populate-db)]
+          (budget-report (d/db conn) "2015" 1)))

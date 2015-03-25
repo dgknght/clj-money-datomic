@@ -174,16 +174,20 @@
 (defn append-budget-amount
   [db budget periods account]
   (let [children (map #(append-budget-amount db budget periods %) (:children account))
-        budget-amount (+ (reduce #(+ %1 (:budget %2)) 0 children) (get-budget-amount db budget account periods))
-        difference (- budget-amount (:account/balance account))
-        percent-difference (if (= budget-amount 0) 0 (with-precision 2 (/ difference budget-amount)))
-        actual-per-month (with-precision 2  (/ (:account/balance account) periods))]
+        budget-amount (+ (reduce #(+ %1 (:budget %2)) 0 children) (get-budget-amount db budget account periods))]
     (assoc account :budget budget-amount
-                   :difference difference
-                   :percent-difference percent-difference
-                   :actual-per-month actual-per-month
-                   :children children
-                   )))
+                   :children children)))
+
+(defn append-analysis
+  [row periods]
+  (let [budget-amount (:budget row)
+        actual (:value row)
+        difference (- actual budget-amount)
+        percent-difference (if (= budget-amount 0) 0 (with-precision 3 (/ difference budget-amount)))
+        actual-per-month (with-precision 2  (/ actual periods))]
+    (assoc row :difference difference
+           :percent-difference percent-difference
+           :actual-per-month actual-per-month)))
 
 (defn budget-report
   "Returns a budget using the specified budget and including the specified periods"
@@ -198,4 +202,5 @@
          (group-by-type)
          (append-totals [:value :budget])
          (interleave-summaries [:account.type/income :account.type/expense])
+         (map #(append-analysis % periods))
          strip-unneeded-values)))
