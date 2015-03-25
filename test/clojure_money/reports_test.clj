@@ -23,7 +23,7 @@
     (add-account conn "Non-food" :account.type/expense "Groceries")
 
     (add-budget conn "2015" #inst "2015-01-01")
-    (add-budget-item conn "2015" "Salary"             (repeat 12 (bigdec 2000)))
+    (add-budget-item conn "2015" "Salary"             (repeat 12 (bigdec 1800)))
     (add-budget-item conn "2015" "Groceries/Food"     (repeat 12 (bigdec  250)))
     (add-budget-item conn "2015" "Groceries/Non-food" (repeat 12 (bigdec  150)))
 
@@ -111,8 +111,8 @@
           (income-statement-report (d/db conn) #inst "2015-01-01" #inst "2015-01-04")))
 
 ; A budget report compares budgeted amounts to actual amounts
-(expect [{:caption "Income"    :budget (bigdec 2000) :value (bigdec 2000) :difference    (bigdec 0) :percent-difference      (bigdec 0) :actual-per-month (bigdec 2000) :depth 0 :style :header}
-         {:caption "Salary"    :budget (bigdec 2000) :value (bigdec 2000) :difference    (bigdec 0) :percent-difference      (bigdec 0) :actual-per-month (bigdec 2000) :depth 0 :style :data}
+(expect [{:caption "Income"    :budget (bigdec 1800) :value (bigdec 2000) :difference (bigdec  200) :percent-difference (bigdec  0.111) :actual-per-month (bigdec 2000) :depth 0 :style :header}
+         {:caption "Salary"    :budget (bigdec 1800) :value (bigdec 2000) :difference (bigdec  200) :percent-difference (bigdec  0.111) :actual-per-month (bigdec 2000) :depth 0 :style :data}
          {:caption "Expense"   :budget  (bigdec 400) :value  (bigdec 300) :difference (bigdec -100) :percent-difference (bigdec -0.250) :actual-per-month  (bigdec 300) :depth 0 :style :header }
          {:caption "Groceries" :budget  (bigdec 400) :value  (bigdec 300) :difference (bigdec -100) :percent-difference (bigdec -0.250) :actual-per-month  (bigdec 300) :depth 0 :style :data }
          {:caption "Food"      :budget  (bigdec 250) :value  (bigdec 200) :difference  (bigdec -50) :percent-difference (bigdec -0.200) :actual-per-month  (bigdec 200) :depth 1 :style :data }
