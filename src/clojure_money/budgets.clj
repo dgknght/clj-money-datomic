@@ -90,3 +90,51 @@
     (reduce #(+ %1 (:budget-item-period/amount %2))
             0
             (take periods (:budget-item/periods item)))))
+
+(defn between?
+  [value start end]
+  (and (> 0 (compare start value))
+       (> 0 (compare value end))))
+
+(defn contains-date?
+  "Returns truthy if the specified budget covers a span of time that includes the specified date"
+  [budget date]
+  (between? date (:budget/start-date budget) (budget-end-date budget)))
+
+(defn find-budget-containing-date
+  "Returns the first budget that spans the time that includes the specified date, or nil if no such budget can be found"
+  [db date]
+  (->> db
+       all-budgets
+       (filter #(contains-date? % date))
+       first))
+
+(defn calculate-budget-item-period-dates
+  [budget-start-date index]
+  (let [start-date (t/plus budget-start-date (t/months index))
+        end-date (-> start-date
+                     (t/plus (t/months 1))
+                     (t/minus (t/seconds 1)))]
+    [start-date end-date]))
+
+#_(TODO Consider just doing this every time we load up a budget)
+(defn append-budget-item-period-dates
+  [budget-item-period budget-start-date]
+  (let [[start-date end-date] (calculate-budget-item-period-dates budget-start-date (:budget-item-period/index budget-item-period))]
+    {:period budget-item-period
+     :start start-date
+     :end end-date}))
+
+(defn find-budget-item-period
+  "Returns the budget item period covering the time span that includes the specified date"
+  [db budget-or-name account-or-name date]
+  (let [budget (resolve-budget db budget-or-name)
+        budget-start-date (c/from-date (:budget/start-date budget))
+        account (resolve-account db account-or-name)
+        budget-item (find-budget-item budget account)]
+    (->> budget-item
+         :budget-item/periods
+         (map #(append-budget-item-period-dates % budget-start-date))
+         (filter (fn [{:keys [start end]}] (between? (c/from-date date) start end)))
+         first
+         :period)))

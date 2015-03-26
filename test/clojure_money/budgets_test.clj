@@ -98,3 +98,23 @@
           (add-budget conn "2015" #inst "2015-01-01")
           (add-budget-item conn "2015" "Groceries" (repeat 12 (bigdec 100)))
           (get-budget-amount (d/db conn) "2015" "Groceries" 3)))
+
+;; Given a date, I should be able to retrieve the budget that includes that date
+(expect "2015"
+        (let [conn (prepare-db)]
+          (add-budget conn "2016" #inst "2016-01-01")
+          (add-budget conn "2015" #inst "2015-01-01")
+          (add-budget conn "2014" #inst "2014-01-01")
+          (-> (find-budget-containing-date (d/db conn) #inst "2015-02-27")
+              :budget/name)))
+
+;; Given a budget item, I should be able to retrieve the period
+;; that contains the specified date
+(expect (bigdec 300)
+        (let [conn (prepare-db)]
+          (add-budget conn "2015" #inst "2015-01-01")
+          (add-budget-item conn "2015" "Groceries" (take 12 (iterate (partial + (bigdec 100)) (bigdec 100))))
+          (-> conn
+              d/db
+              (find-budget-item-period "2015" "Groceries" #inst "2015-03-02")
+              :budget-item-period/amount)))
