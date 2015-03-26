@@ -213,13 +213,13 @@
   (let [account (resolve-account db account-or-name)
         budget (find-budget-containing-date db date)
         period (find-budget-item-period db budget account date)
+        budget-amount (:budget-item-period/amount period)
         dt (c/from-date date)
         expected-percent (/ (t/day dt) (t/number-of-days-in-the-month dt))
-        actual (calculate-account-balance db (:db/id account) (c/to-date (:start-date period)) date) #_(TODO Standardize the class used to hold date values)
-        ]
-    {:budget (:budget-item-period/amount period)
+        actual (calculate-account-balance db (:db/id account) (c/to-date (:start-date period)) date) #_(TODO Standardize the class used to hold date values)]
+    {:budget budget-amount
      :expected-percent expected-percent
-     :expected (with-precision 3 (* expected-percent (:budget-item-period/amount period)))
+     :expected (with-precision 3 (* expected-percent budget-amount))
      :actual actual
      :projected (with-precision 3 (/ actual expected-percent))
-     :actual-percent (with-precision 2 (/ actual (:budget-item-period/amount period)))}))
+     :actual-percent (with-precision 2 (/ actual budget-amount))}))
