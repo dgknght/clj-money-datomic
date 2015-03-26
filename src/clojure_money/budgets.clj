@@ -109,21 +109,13 @@
        (filter #(contains-date? % date))
        first))
 
-(defn calculate-budget-item-period-dates
-  [budget-start-date index]
-  (let [start-date (t/plus budget-start-date (t/months index))
+(defn append-budget-item-period-dates
+  [budget-item-period budget-start-date]
+  (let [start-date (t/plus budget-start-date (t/months (:budget-item-period/index budget-item-period)))
         end-date (-> start-date
                      (t/plus (t/months 1))
                      (t/minus (t/seconds 1)))]
-    [start-date end-date]))
-
-#_(TODO Consider just doing this every time we load up a budget)
-(defn append-budget-item-period-dates
-  [budget-item-period budget-start-date]
-  (let [[start-date end-date] (calculate-budget-item-period-dates budget-start-date (:budget-item-period/index budget-item-period))]
-    {:period budget-item-period
-     :start start-date
-     :end end-date}))
+    (assoc (into {} budget-item-period) :start-date start-date :end-date end-date)))
 
 (defn find-budget-item-period
   "Returns the budget item period covering the time span that includes the specified date"
@@ -135,6 +127,5 @@
     (->> budget-item
          :budget-item/periods
          (map #(append-budget-item-period-dates % budget-start-date))
-         (filter (fn [{:keys [start end]}] (between? (c/from-date date) start end)))
-         first
-         :period)))
+         (filter (fn [{:keys [start-date end-date]}] (between? (c/from-date date) start-date end-date)))
+         first)))

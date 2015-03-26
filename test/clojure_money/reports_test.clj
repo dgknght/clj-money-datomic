@@ -119,3 +119,16 @@
          {:caption "Non-food"  :budget  (bigdec 150) :value  (bigdec 100) :difference  (bigdec -50) :percent-difference (bigdec -0.333) :actual-per-month  (bigdec 100) :depth 1 :style :data }]
         (let [conn (populate-db)]
           (budget-report (d/db conn) "2015" 1)))
+
+;; A budget monitor looks at one account over a specified month, comparing
+;; the actual amount spent so far to the amoun that is expected to have
+;; been spent based on the budgeted amount and the number of days in
+;; the month that have already elapsed.
+(expect {:budget (bigdec 250)
+         :expected (bigdec 161)
+         :expected-percent 20/31
+         :actual (bigdec 200)
+         :actual-percent (bigdec 0.8)
+         :projected (bigdec 310)}
+        (let [conn (populate-db)]
+          (budget-monitor (d/db conn) "Groceries/Food" #inst "2015-01-20")))

@@ -5,6 +5,8 @@
         clojure-money.transactions
         clojure-money.util
         clojure.set)
+  (:require [clj-time.coerce :as c]
+            [clj-time.core :as t])
   (:gen-class))
 
 ;; These functions shouldn't reference any database functions directly
@@ -203,3 +205,21 @@
          (interleave-summaries [:account.type/income :account.type/expense])
          (map #(append-analysis % periods))
          strip-unneeded-values)))
+
+(defn budget-monitor
+  "Returns information about the spending level in an account compared to
+  the expected spending level based on the number of days elapsed on the month"
+  [db account-or-name date]
+  (let [account (resolve-account db account-or-name)
+        budget (find-budget-containing-date db date)
+        period (find-budget-item-period db budget account date)
+        dt (c/from-date date)
+        expected-percent (/ (t/day dt) (t/number-of-days-in-the-month dt))
+        actual (calculate-account-balance db (:db/id account) (c/to-date (:start-date period)) date) #_(TODO Standardize the class used to hold date values)
+        ]
+    {:budget (:budget-item-period/amount period)
+     :expected-percent expected-percent
+     :expected (with-precision 3 (* expected-percent (:budget-item-period/amount period)))
+     :actual actual
+     :projected (with-precision 3 (/ actual expected-percent))
+     :actual-percent (with-precision 2 (/ actual (:budget-item-period/amount period)))}))
