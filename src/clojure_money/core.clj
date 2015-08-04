@@ -1,11 +1,12 @@
 (ns clojure-money.core
   (:require [ring.adapter.jetty :as jetty]
             [compojure.core :refer :all]
-            [compojure.route :as route]))
+            [compojure.route :as route]
+            [hiccup.core :refer :all]))
 
 (defroutes app
-  (GET "/" [] "<html><body><h1>Hello!</h1>It's working!</body></html>")
-  (GET "/test" [] "<html><body><h1>Testing!</h1>One, Two, Three</body></html>")
+  (GET "/" [] (html [:html [:body [:h1 "Hello!"] "It's working!"]]))
+  (GET "/test" [] (html [:html [:body [:h1 "Testing!"] "1, 2, 3"]]))
   (route/not-found "<h1>Resource not found</h1>"))
 
 (defn -main
