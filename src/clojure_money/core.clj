@@ -1,12 +1,14 @@
 (ns clojure-money.core
-  (:require [ring.adapter.jetty :as jetty]))
+  (:require [ring.adapter.jetty :as jetty]
+            [compojure.core :refer :all]
+            [compojure.route :as route]))
 
-(defn handler [request]
-  {:status 200
-   :headers {"Content-Type" "text/html"}
-   :body "<html><body><h1>Hello!</h1>It's working!</body></html>"})
+(defroutes app
+  (GET "/" [] "<html><body><h1>Hello!</h1>It's working!</body></html>")
+  (GET "/test" [] "<html><body><h1>Testing!</h1>One, Two, Three</body></html>")
+  (route/not-found "<h1>Resource not found</h1>"))
 
 (defn -main
   "main entry point for the application"
   [& args]
-  (jetty/run-jetty handler {:port 3000}))
+  (jetty/run-jetty app {:port 3000}))

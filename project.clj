@@ -6,7 +6,8 @@
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [com.datomic/datomic-free "0.9.5067" :exclusions [joda-time]]
                  [clj-time "0.9.0"]
-                 [ring "1.4.0"]]
+                 [ring "1.4.0"]
+                 [compojure "1.4.0"]]
   :main ^:skip-aot clojure-money.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}}
