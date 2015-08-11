@@ -2,14 +2,17 @@
   (:require [ring.adapter.jetty :as jetty]
             [compojure.core :refer :all]
             [compojure.route :as route]
-            [hiccup.core :refer :all]))
+            [hiccup.core :refer :all]
+            [clojure-money.web.accounts :as accounts]))
 
 (defroutes app
-  (GET "/" [] (html [:html [:body [:h1 "Hello!"] "It's working!"]]))
-  (GET "/test" [] (html [:html [:body [:h1 "Testing!"] "1, 2, 3"]]))
-  (route/not-found "<h1>Resource not found</h1>"))
+  (GET "/accounts" [] (accounts/index-accounts))
+  (route/not-found (html [:h1 "Resource not found"])))
 
 (defn -main
   "main entry point for the application"
   [& args]
+  (jetty/run-jetty app {:port 3000}))
+
+(defn go! []
   (jetty/run-jetty app {:port 3000}))
