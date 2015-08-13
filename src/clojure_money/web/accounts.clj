@@ -7,5 +7,6 @@
 (defn index-accounts []
   (main-layout
     "Accounts"
-    [:h2 "Accounts"]
-    [:p "Coming soon."]))
+    [:div {:class "page-header"}
+     [:h1 "Accounts"]]
+    [:p  "Coming soon."]))
