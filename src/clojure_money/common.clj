@@ -53,9 +53,6 @@
 (defn init-database
   []
   (d/create-database uri)
-
-  (println "created the database")
-
   (let [c (d/connect uri)]
     (d/transact c schema)
     (println "created the schema")))
