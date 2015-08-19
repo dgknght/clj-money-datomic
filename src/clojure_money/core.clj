@@ -7,6 +7,7 @@
 
 (defroutes app
   (GET "/accounts" [] (accounts/index-accounts))
+  (GET "/accounts/new" [] (accounts/new-account))
   (route/not-found (html [:h1 "Resource not found"])))
 
 (defn -main
