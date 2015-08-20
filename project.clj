@@ -7,6 +7,7 @@
                  [com.datomic/datomic-free "0.9.5067" :exclusions [joda-time]]
                  [clj-time "0.9.0"]
                  [ring "1.4.0"]
+                 [ring/ring-defaults "0.1.5"]
                  [compojure "1.4.0"]
                  [hiccup "1.0.5"]]
   :main ^:skip-aot clojure-money.core
