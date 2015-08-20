@@ -18,18 +18,13 @@
        [:link  {:rel "icon" :href "../../favicon.ico"}]  
        [:title (str "clj-money - " title)]
 
+       "<!-- jQuery -->"
+       [:script {:src "http://code.jquery.com/jquery-2.1.4.min.js"}]
+
        "<!-- Bootstrap core CSS -->"  
        [:link  {:rel "stylesheet" :href "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css"}]
        [:link  {:rel "stylesheet" :href "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap-theme.min.css"}]
        [:script  {:src "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"}]
-
-       "<!-- Custom styles for this template -->"  
-       [:link  {:href "starter-template.css", :rel "stylesheet"}]
-
-       "<!-- Just for debugging purposes. Don't actually copy these 2 lines! -->"
-       "<!-- [if lt IE 9]><script src=\"../../assets/js/ie8-responsive-file-warning.js\"></script>"  
-       "<![endif]-->"
-       [:script  {:src "../../assets/js/ie-emulation-modes-warning.js"}]
 
        "<!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->"
        "<!-- [if lt IE 9]>\n      <script src=\"https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js\"></script>\n      <script src=\"https://oss.maxcdn.com/respond/1.4.2/respond.min.js\"></script>\n    <!  [endif]-->"]  
@@ -54,5 +49,4 @@
             [:a  {:href "#contact"} "Contact"]]]] "<!--/.nav-collapse -->"]]  
        [:div  {:class "container"} content]  
        [:script  {:src "https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"}]  
-       [:script  {:src "../../dist/js/bootstrap.min.js"}]  "<!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->"  
-       [:script  {:src "../../assets/js/ie10-viewport-bug-workaround.js"}]]]]))
+       ]]]))
