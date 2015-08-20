@@ -29,7 +29,8 @@
   "Returns the HTML options for the available accounts"
   []
   (let [conn (d/connect common/uri)]
-    (map #(vector :option {:value (:id %)} (:name %))
+    (map (fn [{id :db/id account-name :account/name}]
+           [:option {:value id} account-name])
          (accounts/all-accounts (d/db conn)))))
 
 (defn new-account
@@ -53,15 +54,15 @@
       [:label {:for "name"} "Name"]
       [:input.form-control {:id "name" :name "name" :type "text"}]]
      [:div.form-group
-      [:label {:for "parent"} "Parent"]
-      [:select.form-control {:id "parent" :name "parent"}
+      [:label {:for "parent-id"} "Parent"]
+      [:select.form-control {:id "parent-id" :name "parent-id"}
        [:option {:value ""} "--none--"]
        (account-options-for-select)]]
      [:button.btn.btn-default {:type "submit"} "Save"]]))
 
 (defn create-account
   "Creates an account using the supplied parameters, redirecting to the account list on success, or the account form on failure"
-  [{:keys [name account-type parent]}]
+  [{:keys [name account-type parent-id]}]
   (let [conn (d/connect common/uri)]
-    (accounts/add-account conn name (symbol (str "account.type/" account-type)) parent))
+    (accounts/add-account conn name (symbol (str "account.type/" account-type)) parent-id))
   (redirect "/accounts"))
