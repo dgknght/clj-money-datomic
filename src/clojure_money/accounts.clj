@@ -185,3 +185,18 @@
   "Saves multiple accounts to the database"
   [conn accounts]
   (mapv #(add-account conn %) accounts))
+
+(defn delete-account
+  "Removes an account from the system"
+  [conn account-id]
+  (let [thing1 (d/q '[:find ?a
+                       :in $ ?name
+                       :where [?a :account/name ?name]]
+                     (d/db conn) "Checking")
+        account (d/pull (d/db conn) '[*] thing1)]
+
+    (println "thing1" (prn-str thing1))
+    (println "account=" (prn-str account))
+
+    @(d/transact conn
+                 [[:db.fn/retractEntity account]])))

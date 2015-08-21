@@ -8,6 +8,18 @@
             [hiccup.core :refer :all]
             [hiccup.page :refer :all]))
 
+(defn account-row
+  [{account-name :account/name id :db/id}]
+  [:tr
+   [:td account-name]
+   [:td
+    [:form.form-inline {:action (str "/accounts/" id "/delete")
+                        :method "POST"
+                        :style "margin: 0; padding: 0;"}
+     (anti-forgery-field)
+     [:button.btn.btn-sm.btn-link {:type "submit" :title "Click here to delete the account."}
+      [:span.glyphicon.glyphicon-remove {:area-hidden true}]]]]])
+
 (defn index-accounts []
   (main-layout
     "Accounts"
@@ -15,14 +27,12 @@
      [:h1 "Accounts"]]
     [:table.table
      [:tr
-      [:th "Name"]]
+      [:th "Name"]
+      [:td "&nbsp;"]]
      (let [conn (d/connect common/uri)
            db (d/db conn)
            list (accounts/all-accounts db)]
-       (map (fn [{account-name :account/name}]
-              [:tr
-               [:td account-name]])
-            list))]
+       (map account-row list))]
     [:a.btn.btn-default {:href "accounts/new"} "New"]))
 
 (defn account-options-for-select
@@ -65,4 +75,11 @@
   [{:keys [name account-type parent-id]}]
   (let [conn (d/connect common/uri)]
     (accounts/add-account conn name (symbol (str "account.type/" account-type)) parent-id))
+  (redirect "/accounts"))
+
+(defn delete-account
+  "Deletes the specified account"
+  [account-id]
+  (let [conn (d/connect common/uri)]
+    (accounts/delete-account conn account-id))
   (redirect "/accounts"))

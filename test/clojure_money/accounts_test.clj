@@ -215,3 +215,13 @@
       (is (= "Savings" (-> stacked first :account/name)))
       (is (= "Car" (-> stacked first :children first :account/name)))
       (is (= "Reserve" (-> stacked first :children second :account/name))))))
+
+(deftest delete-an-account
+  (testing "I can delete an account"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Checking" :account.type/asset)
+          after-add (find-account-by-path (d/db conn) "Checking")
+          _ (delete-account conn (:db/id after-add))
+          after-delete (find-account-by-path (d/db conn) "Checking")]
+      (is (not (nil? after-add)))
+      (is (nil? after-delete)))))

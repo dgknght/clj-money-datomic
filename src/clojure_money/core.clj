@@ -10,6 +10,7 @@
   (GET "/accounts" [] (accounts/index-accounts))
   (POST "/accounts" req (accounts/create-account (:params req)))
   (GET "/accounts/new" [] (accounts/new-account))
+  (POST "/accounts/:id/delete" [id] (accounts/delete-account id))
   (route/not-found (html [:h1 "Resource not found"])))
 
 (def app (wrap-defaults app-routes site-defaults))
