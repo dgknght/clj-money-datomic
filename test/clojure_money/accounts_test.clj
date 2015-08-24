@@ -1,72 +1,75 @@
 (ns clojure-money.accounts-test
-  (:require [expectations :refer :all]
-            [datomic.api :as d :refer [db]]
+  (:require [datomic.api :as d :refer [db]]
+            [clojure.test :refer :all]
             [clojure-money.accounts :refer :all]
-            [clojure-money.common :refer :all]
-            )
+            [clojure-money.common :refer :all])
   (:use clojure-money.test-common))
 
-;; After I save an account, it appears in the list of all accounts
-(expect (more-> "Checking" :account/name
-                :account.type/asset :account/type
-                (bigdec 0) :account/balance)
-        (let [conn (create-empty-db)]
-          (add-account conn "Checking")
-          (first (all-accounts (d/db conn)))))
+(deftest save-an-account
+  (testing "After I save an account, it appears in the list of all accounts"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Checking")
+          accounts (all-accounts (d/db conn))]
+      (is (= 1 (count accounts)))
+      (is (= "Checking" (-> accounts first :account/name)))))
+  (testing "After I save two accounts, they are both in the list of all accounts"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Checking")
+          _ (add-account conn "Savings")
+          accounts (all-accounts (d/db conn))]
+      (is (= 2 (count accounts)))
+      (is (= "Checking" (-> accounts first :account/name)))
+      (is (= "Savings" (-> accounts second :account/name))))))
 
-(expect (more-> 2 count
-                "Checking" (-> first :account/name)
-                "Savings" (-> second :account/name))
-        (let [conn (create-empty-db)]
-          (add-account conn "Checking")
-          (add-account conn "Savings")
-          (all-accounts (d/db conn))))
+(deftest get-an-account-by-path
+  (testing "After I save an account, I can retrieve it by path (name prepened by parents' names)"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Checking")
+          account (find-account-by-path (d/db conn) "Checking")]
+      (is (= "Checking" (:account/name account))))))
 
-;; I can retrieve and account by path (name, prepended by the name of any parents)
-(expect (more-> "Checking" :account/name)
-        (let [conn (create-empty-db)]
-          (add-account conn "Checking")
-          (find-account-by-path (d/db conn) "Checking")))
+(deftest get-an-account-id-by-path
+  (testing "After I save an account, I can get its ID by path"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Checking")
+          account-id (find-account-id-by-path (d/db conn) "Checking")]
+      (is (number? account-id)))))
 
-;; I can retrieve and account id by path (name, prepended by the name of any parents)
-(expect (more-> true number?)
-        (let [conn (create-empty-db)]
-          (add-account conn "Checking")
-          (find-account-id-by-path (d/db conn) "Checking")))
+(deftest an-account-must-have-a-valid-type
+  (testing "An account can be created with a valid type"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Credit card" :account.type/liability)
+          accounts (all-accounts (d/db conn))]
+      (is (= 1 (count accounts)))))
+  (testing "An account cannot be created in an invalid type"
+    (let [conn (create-empty-db)]
+      (is (thrown-with-msg? Exception #"Unable to resolve entity: notatype"
+                            (add-account conn "Checking" "notatype"))))))
 
-;; An account can be an asset, liability, equity, income, or expense
-(expect (more-> 1 count)
-        (let [conn (create-empty-db)]
-          (add-account conn "Credit card" :account.type/liability)
-          (all-accounts (d/db conn))))
-(expect Exception
-        (let [conn (create-empty-db)]
-          (add-account conn "Checking" "notatype")
-          (all-accounts (d/db conn))))
+(defn create-and-retrieve-account
+  ([account-name account-type]
+   (let [conn (create-empty-db)]
+     (create-and-retrieve-account conn account-name account-type)))
+  ([conn account-name account-type]
+   (add-account conn account-name account-type)
+   (find-account-by-path (d/db conn) account-name)))
 
-; Assets and expenses accounts are "left-side" of the equation A = L + E
-(expect true
-        (let [conn (create-empty-db)]
-          (add-account conn "Checking" :account.type/asset)
-          (left-side? (find-account-by-path (d/db conn) "Checking"))))
-(expect true
-        (let [conn (create-empty-db)]
-          (add-account conn "Rent" :account.type/expense)
-          (left-side? (find-account-by-path (d/db conn) "Rent"))))
-
-; Liability, equity, and income accounts are "right-side" of the equation A = L + E
-(expect true
-        (let [conn (create-empty-db)]
-            (add-account conn "Credit card" :account.type/liability)
-            (right-side? (find-account-by-path (d/db conn) "Credit card"))))
-(expect true
-        (let [conn (create-empty-db)]
-            (add-account conn "Opening balances" :account.type/equity)
-            (right-side? (find-account-by-path (d/db conn) "Opening balances"))))
-(expect true
-        (let [conn (create-empty-db)]
-            (add-account conn "Salary" :account.type/income)
-            (right-side? (find-account-by-path (d/db conn) "Salary"))))
+(deftest an-account-is-left-side-or-right-side
+  (testing "Asset accounts are 'left-side' of the equestion A = L + E"
+    (let [account (create-and-retrieve-account "Checking" :account.type/asset)]
+      (is (left-side? account))))
+  (testing "Expense accounts are 'left-side' of the equestion A = L + E"
+    (let [account (create-and-retrieve-account "Rent" :account.type/expense)]
+      (is (left-side? account))))
+  (testing "Liability accounts are 'right-side' of the equestion A = L + E"
+    (let [account (create-and-retrieve-account "Credit card" :account.type/liability)]
+      (is (right-side? account))))
+  (testing "Equity accounts are 'right-side' of the equestion A = L + E"
+    (let [account (create-and-retrieve-account "Opening balances" :account.type/equity)]
+      (is (right-side? account))))
+  (testing "Income accounts are 'right-side' of the equestion A = L + E"
+    (let [account (create-and-retrieve-account "Salary" :account.type/income)]
+      (is (right-side? account)))))
 
 ;;                  Debit     Credit
 ;; Asset            Increase  Decrease
@@ -75,125 +78,119 @@
 ;; Expense          Increase  Decrease
 ;; Equity/Capital   Decrease  Increase
 
-;; debiting an asset account increases the balance
-(expect (bigdec 200)
-        (let [conn (create-empty-db)]
-          (add-account conn "Checking")
-          (let [id (find-account-id-by-path (d/db conn) "Checking")]
-            (debit-account conn id (bigdec 100))
-            (debit-account conn id (bigdec 100))
-            (get-balance (d/db conn) id))))
+(deftest debit-an-account
+  (testing "Debiting an asset account increases the balance"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Checking")
+          id (find-account-id-by-path (d/db conn) "Checking")
+          _ (debit-account conn id (bigdec 100))
+          _ (debit-account conn id (bigdec 100))
+          balance (get-balance (d/db conn) id)]
+      (is (= (bigdec 200) balance))))
+  (testing "Debiting an expense account increases the balance"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Rent" :account.type/expense)
+          id (find-account-id-by-path (d/db conn) "Rent")
+          _ (debit-account conn id (bigdec 101))
+          _ (debit-account conn id (bigdec 101))
+          balance (get-balance (d/db conn) id)]
+      (is (= (bigdec 202) balance))))
+  (testing "Debiting a liability account decreases the balance"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Credit card" :account.type/liability)
+          id (find-account-id-by-path (d/db conn) "Credit card")
+          _ (debit-account conn id (bigdec 102))
+          balance (get-balance (d/db conn) id)]
+      (is (= (bigdec -102) balance))))
+  (testing "Debiting an equity account decreases the balance"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Opening balances" :account.type/equity)
+          id (find-account-id-by-path (d/db conn) "Opening balances")
+          _ (debit-account conn id (bigdec 103))
+          balance (get-balance (d/db conn) id)]
+      (is (= (bigdec -103) balance))))
+  (testing "Debiting an income account decreases the balance"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Salary" :account.type/income)
+          id (find-account-id-by-path (d/db conn) "Salary")
+          _ (debit-account conn id (bigdec 104))
+          balance (get-balance (d/db conn) id)]
+      (is (= (bigdec -104) balance)))))
 
-;; crediting an asset account decreases the balance
-(expect (bigdec 50)
-        (let [conn (create-empty-db)]
-          (add-account conn "Checking")
-          (let [id (find-account-id-by-path (d/db conn) "Checking")]
-            (debit-account conn id (bigdec 100))
-            (credit-account conn id (bigdec 50))
-            (get-balance (d/db conn) id))))
+(deftest credit-an-account
+  (testing "Crediting an asset account decreases the balance"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Checking")
+          id (find-account-id-by-path (d/db conn) "Checking")
+          _ (credit-account conn id (bigdec 100))
+          balance (get-balance (d/db conn) id)]
+      (is (= (bigdec -100) balance))))
+  (testing "Crediting an expense account decreases the balance"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Rent" :account.type/expense)
+          id (find-account-id-by-path (d/db conn) "Rent")
+          _ (credit-account conn id (bigdec 111))
+          balance (get-balance (d/db conn) id)]
+      (is (= (bigdec -111) balance))))
+  (testing "Crediting a liability account increases the balance"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Credit card" :account.type/liability)
+          id (find-account-id-by-path (d/db conn) "Credit card")
+          _ (credit-account conn id (bigdec 112))
+          balance (get-balance (d/db conn) id)]
+      (is (= (bigdec 112) balance))))
+  (testing "Crediting an equity account increases the balance"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Opening balances" :account.type/equity)
+          id (find-account-id-by-path (d/db conn) "Opening balances")
+          _ (credit-account conn id (bigdec 113))
+          balance (get-balance (d/db conn) id)]
+      (is (= (bigdec 113) balance))))
+  (testing "Crediting an income account increases the balance"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Salary" :account.type/income)
+          id (find-account-id-by-path (d/db conn) "Salary")
+          _ (credit-account conn id (bigdec 114))
+          balance (get-balance (d/db conn) id)]
+      (is (= (bigdec 114) balance)))))
 
-;; debiting an expense account increases the balance
-(expect (bigdec 200)
-        (let [conn (create-empty-db)]
-            (add-account conn "Rent" :account.type/expense)
-          (let [id (find-account-id-by-path (d/db conn) "Rent")]
-            (debit-account conn id (bigdec 100))
-            (debit-account conn id (bigdec 100))
-            (get-balance (d/db conn) id))))
+(deftest add-a-child-account
+  (testing "A a child account can be accessed via its parent"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Savings" :account.type/asset)
+          _ (add-account conn "Car", :account.type/asset, "Savings")
+          children (child-accounts (d/db conn) "Savings")]
+      (is (= 1 (count children)))
+      (is (= "Car") (-> children first :account/name))))
+  (testing "A child can be retrieved directly by path"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Savings" :account.type/asset)
+          _ (add-account conn "Car" :account.type/asset "Savings")
+          child (find-account-by-path (d/db conn) "Savings/Car")]
+      (is (= "Car") (:account/name child)))))
 
-;; crediting an expense account decreases the balance
-(expect (bigdec 50)
-        (let [conn (create-empty-db)]
-          (add-account conn "Rent" :account.type/expense)
-          (let [id (find-account-id-by-path (d/db conn) "Rent")]
-            (debit-account conn id (bigdec 100))
-            (credit-account conn id (bigdec 50))
-            (get-balance (d/db conn) id))))
+(deftest get-root-accounts
+  (testing "Root accounts can be retrieved together"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Savings" :account.type/asset)
+          _ (add-account conn "Car" :account.type/asset "Savings")
+          _ (add-account conn "Reserve" :account.type/asset "Savings")
+          _ (add-account conn "Opening Balances" :account.type/equity)
+          root-accounts (->> conn
+                             d/db
+                             root-accounts
+                             (map :account/name)
+                             set
+                             )]
+      (= #{"Savings" "Opening Balances"} root-accounts))))
 
-;; debiting a liability account decreases the balance
-(expect (bigdec -100)
-        (let [conn (create-empty-db)]
-          (add-account conn "Credit card" :account.type/liability)
-          (let [id (find-account-id-by-path (d/db conn) "Credit card")]
-            (debit-account conn id (bigdec 100))
-            (get-balance (d/db conn) id))))
-
-;; crediting a liability account increases the balance
-(expect (bigdec 100)
-        (let [conn (create-empty-db)]
-          (add-account conn "Credit card" :account.type/liability)
-          (let [id (find-account-id-by-path (d/db conn) "Credit card")]
-            (credit-account conn id (bigdec 100))
-            (get-balance (d/db conn) id))))
-
-;; debiting an equity account decreases the balance
-(expect (bigdec -100)
-        (let [conn (create-empty-db)]
-          (add-account conn "Opening balances" :account.type/equity)
-          (let [id (find-account-id-by-path (d/db conn) "Opening balances")]
-            (debit-account conn id (bigdec 100))
-            (get-balance (d/db conn) id))))
-
-;; crediting an equity account increases the balance
-(expect (bigdec 100)
-        (let [conn (create-empty-db)]
-          (add-account conn "Opening balances" :account.type/equity)
-          (let [id (find-account-id-by-path (d/db conn) "Opening balances")]
-            (credit-account conn id (bigdec 100))
-            (get-balance (d/db conn) id))))
-
-;; debiting an income account decreases the balance
-(expect (bigdec -100)
-        (let [conn (create-empty-db)]
-          (add-account conn "Salary" :account.type/income)
-          (let [id (find-account-id-by-path (d/db conn) "Salary")]
-            (debit-account conn id (bigdec 100))
-            (get-balance (d/db conn) id))))
-
-;; crediting an income account increases the balance
-(expect (bigdec 100)
-        (let [conn (create-empty-db)]
-          (add-account conn "Salary" :account.type/income)
-          (let [id (find-account-id-by-path (d/db conn) "Salary")]
-            (credit-account conn id (bigdec 100))
-            (get-balance (d/db conn) id))))
-
-;; I can add a child account to an existing account
-(expect (more-> 1 count
-                "Car" (-> first :account/name))
-        (let [conn (create-empty-db)]
-          (add-account conn "Savings" :account.type/asset)
-          (add-account conn "Car", :account.type/asset, "Savings")
-          (child-accounts (d/db conn) "Savings")))
-
-;; I can find a child account directly with its path
-(expect (more-> "Car" :account/name)
-        (let [conn (create-empty-db)]
-          (add-account conn "Savings" :account.type/asset)
-          (add-account conn "Car" :account.type/asset "Savings")
-          (find-account-by-path (d/db conn) "Savings/Car")))
-
-;; I can get a list of all root accounts
-(expect #{"Savings", "Opening Balances"}
-        (let [conn (create-empty-db)]
-          (add-account conn "Savings" :account.type/asset)
-          (add-account conn "Car" :account.type/asset "Savings")
-          (add-account conn "Reserve" :account.type/asset "Savings")
-          (add-account conn "Opening Balances" :account.type/equity)
-          (->> conn
-               d/db
-               root-accounts
-               (map :account/name)
-               set
-               )))
-
-;; Stacked accounts have children listed under their parents
-(expect (more-> "Savings" (-> first :account/name)
-                "Car" (-> first :children first :account/name)
-                "Reserve" (-> first :children second :account/name)) 
-        (let [conn (create-empty-db)]
-          (add-account conn "Savings" :account.type/asset)
-          (add-account conn "Car" :account.type/asset "Savings")
-          (add-account conn "Reserve" :account.type/asset "Savings")
-          (stacked-accounts (d/db conn))))
+(deftest get-stacked-accounts
+  (testing "Accounts can be retrieved such that children accounts are contained by their parents"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Savings" :account.type/asset)
+          _ (add-account conn "Car" :account.type/asset "Savings")
+          _ (add-account conn "Reserve" :account.type/asset "Savings")
+          stacked (stacked-accounts (d/db conn))]
+      (is (= "Savings" (-> stacked first :account/name)))
+      (is (= "Car" (-> stacked first :children first :account/name)))
+      (is (= "Reserve" (-> stacked first :children second :account/name))))))
