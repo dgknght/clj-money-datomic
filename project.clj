@@ -5,7 +5,6 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [com.datomic/datomic-free "0.9.5067" :exclusions [joda-time]]
-                 [expectations "2.0.13"]
                  [clj-time "0.9.0"]]
   :main ^:skip-aot clojure-money.core
   :target-path "target/%s"
