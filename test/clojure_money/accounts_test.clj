@@ -1,6 +1,7 @@
 (ns clojure-money.accounts-test
   (:require [datomic.api :as d :refer [db]]
             [clojure.test :refer :all]
+            [clojure.tools.logging :as log]
             [clojure-money.accounts :refer :all]
             [clojure-money.common :refer :all])
   (:use clojure-money.test-common))
@@ -218,6 +219,9 @@
 
 (deftest delete-an-account
   (testing "I can delete an account"
+
+    (log/info "Running the delete test")
+
     (let [conn (create-empty-db)
           _ (add-account conn "Checking" :account.type/asset)
           after-add (find-account-by-path (d/db conn) "Checking")

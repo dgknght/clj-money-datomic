@@ -4,6 +4,7 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.7.0"]
+                 [org.clojure/tools.logging "0.3.1"]
                  [com.datomic/datomic-free "0.9.5067" :exclusions [joda-time]]
                  [clj-time "0.9.0"]
                  [ring "1.4.0"]
