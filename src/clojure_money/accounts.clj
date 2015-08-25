@@ -189,14 +189,10 @@
 (defn delete-account
   "Removes an account from the system"
   [conn account-id]
-  (let [thing1 (d/q '[:find ?a
-                       :in $ ?name
-                       :where [?a :account/name ?name]]
-                     (d/db conn) "Checking")
-        account (d/pull (d/db conn) '[*] thing1)]
-
-    (println "thing1" (prn-str thing1))
-    (println "account=" (prn-str account))
-
+  (let [id (d/q '[:find ?a .
+                  :in $ ?name
+                  :where [?a :account/name ?name]]
+                (d/db conn) "Checking")
+        entity (d/entity (d/db conn) id)]
     @(d/transact conn
-                 [[:db.fn/retractEntity account]])))
+                 [[:db.fn/retractEntity (:db/id entity)]])))
