@@ -219,9 +219,6 @@
 
 (deftest delete-an-account
   (testing "I can delete an account"
-
-    (log/info "Running the delete test")
-
     (let [conn (create-empty-db)
           _ (add-account conn "Checking" :account.type/asset)
           after-add (find-account-by-path (d/db conn) "Checking")
