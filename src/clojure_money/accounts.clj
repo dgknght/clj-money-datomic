@@ -186,6 +186,11 @@
   [conn accounts]
   (mapv #(add-account conn %) accounts))
 
+(defn find-account
+  [db account-id]
+  (let [entity (d/entity db account-id)]
+    (d/touch entity)))
+
 (defn delete-account
   "Removes an account from the system"
   [conn account-id]

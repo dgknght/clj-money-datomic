@@ -15,13 +15,17 @@
                         :style "margin: 0; padding: 0;"}
      (anti-forgery-field)
      [:button.btn.btn-sm.btn-link {:type "submit" :title "Click here to delete the account."}
-      [:span.glyphicon.glyphicon-remove {:area-hidden true}]]])
+      [:span.glyphicon.glyphicon-remove {:aria-hidden true}]]])
 
 (defn account-row
   [{account-name :account/name id :db/id :as account}]
   [:tr
    [:td account-name]
-   [:td (delete-form "accounts" id)]])
+   [:td
+    [:div.pull-left
+    [:a.btn.btn-link.btn-sm {:href (str "/accounts/" id "/edit")}
+     [:span.glyphicon.glyphicon-pencil {:aria-hidden true}]]]
+    (delete-form "accounts" id)]])
 
 (defn index-accounts []
   (main-layout
@@ -38,13 +42,44 @@
        (map account-row list))]
     [:a.btn.btn-default {:href "accounts/new"} "New"]))
 
+(defn select-option
+  [caption value selected]
+  (let [option [:option {:value (or value caption)} caption]]
+    (if selected
+      (assoc-in option [1 :selected] true)
+      option)))
+
 (defn account-options-for-select
   "Returns the HTML options for the available accounts"
-  []
+  [selected-id]
   (let [conn (d/connect common/uri)]
     (map (fn [{id :db/id account-name :account/name}]
-           [:option {:value id} account-name])
+           (select-option account-name id (= selected-id id)))
          (accounts/all-accounts (d/db conn)))))
+
+(defn account-type-options
+  [selected-type]
+  (map (fn [account-type]
+         (select-option account-type account-type (= selected-type account-type)))
+       ["asset" "liability" "equity" "income" "expense"]))
+
+(defn form-fields
+  ([] (form-fields {}))
+  ([account]
+   [:div ; TODO This div is only here because this function returns a collection and that's what hiccup needs
+    (anti-forgery-field)
+    [:div.form-group
+     [:label {:for "account-type"} "Account Type"]
+     [:select.form-control {:id "account-type" :name "account-type" :autofocus 1}
+      (account-type-options (:account/type account))]]
+    [:div.form-group
+     [:label {:for "name"} "Name"]
+     [:input.form-control {:id "name" :name "name" :type "text" :value (:account/name account)}]]
+    [:div.form-group
+     [:label {:for "parent-id"} "Parent"]
+     [:select.form-control {:id "parent-id" :name "parent-id"}
+      [:option {:value ""} "--none--"]
+      (account-options-for-select (:account/parent account))]]]))
 
 (defn new-account
   "Renders a form that can be submitted to create a new account"
@@ -54,24 +89,25 @@
     [:div.page-header
      [:h1 "New Account"]]
     [:form {:role "form" :action "/accounts" :method "POST"}
-     (anti-forgery-field)
-     [:div.form-group
-      [:label {:for "account-type"} "Account Type"]
-      [:select.form-control {:id "account-type" :name "account-type" :autofocus 1}
-       [:option "asset"]
-       [:option "liability"]
-       [:option "equity"]
-       [:option "income"]
-       [:option "expense"]]]
-     [:div.form-group
-      [:label {:for "name"} "Name"]
-      [:input.form-control {:id "name" :name "name" :type "text"}]]
-     [:div.form-group
-      [:label {:for "parent-id"} "Parent"]
-      [:select.form-control {:id "parent-id" :name "parent-id"}
-       [:option {:value ""} "--none--"]
-       (account-options-for-select)]]
-     [:button.btn.btn-default {:type "submit"} "Save"]]))
+     (form-fields)
+     [:div.btn-group
+      [:button.btn.btn-primary {:type "submit"} "Save"]
+      [:a.btn.btn-default {:href "/accounts"} "Cancel"]]]))
+
+(defn edit-account
+  "Renders a form that can be submitted to modify an existing account"
+  [account-id]
+  (let [conn (d/connect common/uri)
+        account (accounts/find-account (d/db conn) (Long. account-id))]
+    (main-layout
+      "Edit Account"
+      [:div.page-header
+       [:h1 "Edit Account"]]
+      [:form {:role "form" :action (str "/accounts/" account-id) :method "POST"}
+       (form-fields account)
+       [:div.btn-group
+        [:button.btn.btn-primary {:type "submit"} "Save"]
+        [:a.btn.btn-default {:href "/accounts"} "Cancel"]]])))
 
 (defn create-account
   "Creates an account using the supplied parameters, redirecting to the account list on success, or the account form on failure"
