@@ -8,17 +8,20 @@
             [hiccup.core :refer :all]
             [hiccup.page :refer :all]))
 
-(defn account-row
-  [{account-name :account/name id :db/id}]
-  [:tr
-   [:td account-name]
-   [:td
-    [:form.form-inline {:action (str "/accounts/" id "/delete")
+(defn delete-form
+  [model-type id]
+  [:form.form-inline {:action (str "/" model-type "/" id "/delete")
                         :method "POST"
                         :style "margin: 0; padding: 0;"}
      (anti-forgery-field)
      [:button.btn.btn-sm.btn-link {:type "submit" :title "Click here to delete the account."}
-      [:span.glyphicon.glyphicon-remove {:area-hidden true}]]]]])
+      [:span.glyphicon.glyphicon-remove {:area-hidden true}]]])
+
+(defn account-row
+  [{account-name :account/name id :db/id :as account}]
+  [:tr
+   [:td account-name]
+   [:td (delete-form "accounts" id)]])
 
 (defn index-accounts []
   (main-layout
@@ -81,5 +84,5 @@
   "Deletes the specified account"
   [account-id]
   (let [conn (d/connect common/uri)]
-    (accounts/delete-account conn account-id))
+    (accounts/delete-account conn (Long. account-id)))
   (redirect "/accounts"))
