@@ -32,7 +32,7 @@
     "Accounts"
     [:div.page-header
      [:h1 "Accounts"]]
-    [:table.table
+    [:table.table.table-striped
      [:tr
       [:th "Name"]
       [:td "&nbsp;"]]
