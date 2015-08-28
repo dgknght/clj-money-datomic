@@ -1,5 +1,6 @@
 (ns clojure-money.web.accounts
-  (:require [clojure-money.accounts :as accounts]
+  (:require [clojure.tools.logging :as log]
+            [clojure-money.accounts :as accounts]
             [clojure-money.common :as common]
             [clojure-money.web.layouts :refer :all]
             [datomic.api :as d]
@@ -71,7 +72,7 @@
     [:div.form-group
      [:label {:for "account-type"} "Account Type"]
      [:select.form-control {:id "account-type" :name "account-type" :autofocus 1}
-      (account-type-options (:account/type account))]]
+      (account-type-options (name (:account/type account)))]]
     [:div.form-group
      [:label {:for "name"} "Name"]
      [:input.form-control {:id "name" :name "name" :type "text" :value (:account/name account)}]]

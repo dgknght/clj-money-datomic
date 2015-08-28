@@ -193,7 +193,7 @@
                     parent-id :account/parent}]
   (let [tx-data (cond-> {:db/id account-id}
                   account-name (assoc :account/name account-name)
-                  account-type (assoc :account/type (str "account.type/" account-type))
+                  account-type (assoc :account/type account-type)
                   parent-id (assoc :account/parent parent-id))]
     @(d/transact
        conn
