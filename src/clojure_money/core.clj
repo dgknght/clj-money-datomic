@@ -4,9 +4,11 @@
             [compojure.core :refer :all]
             [compojure.route :as route]
             [hiccup.core :refer :all]
-            [clojure-money.web.accounts :as accounts]))
+            [clojure-money.web.accounts :as accounts]
+            [clojure-money.web.pages :as pages]))
 
 (defroutes app-routes
+  (GET "/" [] (pages/home))
   (GET "/accounts" [] (accounts/index-accounts))
   (POST "/accounts" [:as {params :params}] (accounts/create-account params))
   (GET "/accounts/new" [] (accounts/new-account))
