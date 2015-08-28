@@ -109,12 +109,32 @@
         [:button.btn.btn-primary {:type "submit"} "Save"]
         [:a.btn.btn-default {:href "/accounts"} "Cancel"]]])))
 
+(defn account-params
+  [params]
+  (-> params
+      (select-keys [:account-type :parent-id :name])
+      (clojure.set/rename-keys {:name :account/name
+                                :account-type :account/type
+                                :parent-id :account/parent})
+      (update-in [:account/parent] #(Long. %))
+      (update-in [:account/type] #(keyword (str "account.type/" %)))))
+
 (defn create-account
   "Creates an account using the supplied parameters, redirecting to the account list on success, or the account form on failure"
-  [{:keys [name account-type parent-id]}]
-  (let [conn (d/connect common/uri)]
+  [params]
+  (let [{:keys [name parent-id account-type]} (account-params params)
+        conn (d/connect common/uri)]
     (accounts/add-account conn name (symbol (str "account.type/" account-type)) parent-id))
-  (redirect "/accounts"))
+  (redirect "/accounts")) ; TODO Need to handle error messages
+
+(defn update-account
+  "Updates an existing account"
+  [account-id params]
+  (let [id (Long. account-id)
+        account-params (account-params params)
+        conn (d/connect common/uri)]
+    (accounts/update-account conn id account-params)
+    (redirect "/accounts"))) ; TODO Need to include error messages
 
 (defn delete-account
   "Deletes the specified account"

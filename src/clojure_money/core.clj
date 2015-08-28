@@ -8,9 +8,10 @@
 
 (defroutes app-routes
   (GET "/accounts" [] (accounts/index-accounts))
-  (POST "/accounts" req (accounts/create-account (:params req)))
+  (POST "/accounts" [:as {params :params}] (accounts/create-account params))
   (GET "/accounts/new" [] (accounts/new-account))
   (GET "/accounts/:id/edit" [id] (accounts/edit-account id))
+  (POST "/accounts/:id" [id :as {params :params}] (accounts/update-account id params))
   (POST "/accounts/:id/delete" [id] (accounts/delete-account id))
   (route/not-found (html [:h1 "Resource not found"])))
 
