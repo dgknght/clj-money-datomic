@@ -186,6 +186,19 @@
   [conn accounts]
   (mapv #(add-account conn %) accounts))
 
+(defn update-account
+  "Updates an existing account"
+  [conn account-id {account-name :account/name
+                    account-type :account/type
+                    parent-id :account/parent}]
+  (let [tx-data (cond-> {:db/id account-id}
+                  account-name (assoc :account/name account-name)
+                  account-type (assoc :account/type (str "account.type/" account-type))
+                  parent-id (assoc :account/parent parent-id))]
+    @(d/transact
+       conn
+       [tx-data])))
+
 (defn find-account
   [db account-id]
   (let [entity (d/entity db account-id)]

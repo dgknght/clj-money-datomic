@@ -226,3 +226,14 @@
           after-delete (find-account-by-path (d/db conn) "Checking")]
       (is (not (nil? after-add)))
       (is (nil? after-delete)))))
+
+(deftest update-an-account
+  (testing "When I update and account, the account should assume the new values")
+  (let [conn (create-empty-db)
+        _ (add-account conn "wrong-name" :account.type/asset)
+        id (find-account-id-by-path (d/db conn) "wrong-name")
+        _ (update-account conn id {:account/name "right-name"
+                                   :account/type :account.type/liability})
+        updated (find-account (d/db conn) id)]
+    (is (= "right-name" (:account/name updated)))
+    (is (= :account.type/liability (:account/type updated)))))
