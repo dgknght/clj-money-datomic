@@ -80,7 +80,7 @@
      [:label {:for "parent-id"} "Parent"]
      [:select.form-control {:id "parent-id" :name "parent-id"}
       [:option {:value ""} "--none--"]
-      (account-options-for-select (:account/parent account))]]]))
+      (account-options-for-select (:db/id (:account/parent account)))]]]))
 
 (defn new-account
   "Renders a form that can be submitted to create a new account"
