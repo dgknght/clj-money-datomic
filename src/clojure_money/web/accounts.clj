@@ -19,14 +19,20 @@
       [:span.glyphicon.glyphicon-remove {:aria-hidden true}]]])
 
 (defn account-row
-  [{account-name :account/name id :db/id :as account}]
+  [{account-name :account/name id :db/id depth :depth :as account}]
   [:tr
-   [:td account-name]
+   [:td [:div {:class (str "depth-" depth)} account-name]]
    [:td
     [:div.pull-left
     [:a.btn.btn-link.btn-sm {:href (str "/accounts/" id "/edit")}
      [:span.glyphicon.glyphicon-pencil {:aria-hidden true}]]]
     (delete-form "accounts" id)]])
+
+(defn presentable-accounts
+  []
+  (let [conn (d/connect common/uri)
+        accounts (accounts/stacked-accounts (d/db conn))]
+    (accounts/flatten-accounts accounts)))
 
 (defn index-accounts []
   (main-layout
@@ -37,9 +43,7 @@
      [:tr
       [:th "Name"]
       [:td "&nbsp;"]]
-     (let [conn (d/connect common/uri)
-           db (d/db conn)
-           list (accounts/all-accounts db)]
+     (let [list (presentable-accounts)]
        (map account-row list))]
     [:a.btn.btn-default {:href "accounts/new"} "New"]))
 
