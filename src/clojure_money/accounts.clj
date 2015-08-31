@@ -41,6 +41,21 @@
   [db]
   (filter #(not (:account/parent %)) (all-accounts db)))
 
+(declare flatten-accounts)
+(defn flatten-account
+  "Accepts an account with a :children attribute and returns a list containing 
+  the specified account, followed by the children"
+  [account depth]
+  (let [children (flatten-accounts (:children account) (inc depth))]
+    (cons (assoc (dissoc account :children) :depth depth)
+          children)))
+
+(defn flatten-accounts
+  "Accepts stacked accounts and returns a flat list with a new depth attribute"
+  ([accounts] (flatten-accounts accounts 0))
+  ([accounts depth]
+   (reduce #(concat %1 (flatten-account %2 depth)) [] accounts)))
+
 (declare resolve-account-id)
 (defn child-accounts
   "Returns all of the children of the specified account"
