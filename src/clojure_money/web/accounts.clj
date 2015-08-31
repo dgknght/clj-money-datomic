@@ -1,5 +1,6 @@
 (ns clojure-money.web.accounts
   (:require [clojure.tools.logging :as log]
+            [clojure.set :refer [rename-keys]]
             [clojure-money.accounts :as accounts]
             [clojure-money.common :as common]
             [clojure-money.web.layouts :refer :all]
@@ -19,20 +20,26 @@
       [:span.glyphicon.glyphicon-remove {:aria-hidden true}]]])
 
 (defn account-row
-  [{account-name :account/name id :db/id depth :depth :as account}]
+  [{:keys [caption depth id account-type] :as account}]
   [:tr
-   [:td [:div {:class (str "depth-" depth)} account-name]]
+   [:td [:div {:class (str "depth-" depth)} caption]]
    [:td
     [:div.pull-left
     [:a.btn.btn-link.btn-sm {:href (str "/accounts/" id "/edit")}
      [:span.glyphicon.glyphicon-pencil {:aria-hidden true}]]]
     (delete-form "accounts" id)]])
 
+(defn account-to-displayable
+  [account]
+  (rename-keys (into {} account) {:account/name :caption :db/id :id :account/type :account-type}))
+
 (defn presentable-accounts
   []
   (let [conn (d/connect common/uri)
         accounts (accounts/stacked-accounts (d/db conn))]
-    (accounts/flatten-accounts accounts)))
+    (->> accounts
+        accounts/flatten-accounts
+        (map account-to-displayable))))
 
 (defn index-accounts []
   (main-layout
