@@ -14,8 +14,7 @@
       (is (= "Checking" (-> accounts first :account/name)))))
   (testing "After I save two accounts, they are both in the list of all accounts"
     (let [conn (create-empty-db)
-          _ (add-account conn "Checking")
-          _ (add-account conn "Savings")
+          _ (add-accounts conn ["Checking" "Savings"])
           accounts (all-accounts (d/db conn))]
       (is (= 2 (count accounts)))
       (is (= "Checking" (-> accounts first :account/name)))

@@ -180,3 +180,8 @@
      @(d/transact
         conn
         [tx-data]))))
+
+(defn add-accounts
+  "Saves multiple accounts to the database"
+  [conn accounts]
+  (mapv #(add-account conn %) accounts))
