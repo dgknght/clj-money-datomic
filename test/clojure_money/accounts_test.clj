@@ -46,6 +46,15 @@
       (is (thrown-with-msg? Exception #"Unable to resolve entity: notatype"
                             (add-account conn "Checking" "notatype"))))))
 
+(deftest calculate-path-test
+  (testing "Given an account and a list of accounts containing the parents, a path can be calculated"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Savings" :account.type/asset)
+          _ (add-account conn "Reserve" :account.type/asset "Savings")
+          accounts (all-accounts (d/db conn))
+          paths (into #{} (map #(calculate-path-with-list % accounts) accounts))]
+      (is (= #{"Savings" "Savings/Reserve"} paths)))))
+
 (defn create-and-retrieve-account
   ([account-name account-type]
    (let [conn (create-empty-db)]

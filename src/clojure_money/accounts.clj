@@ -71,6 +71,13 @@
          db
          account-name)))
 
+(defn calculate-path-with-list
+  "Given an account (or an ID), calculates the path by looking up parents in the database"
+  [account accounts]
+  (if-let [parent (:account/parent account)]
+    (str (calculate-path-with-list parent accounts) "/" (:account/name account))
+    (:account/name account)))
+
 (defn find-account-id-by-path
   "Finds an account with the specified path"
   [db path]
