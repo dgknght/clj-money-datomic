@@ -11,16 +11,16 @@
   "Creates and populates a database"
   []
   (let [conn (create-empty-db)]
-    (add-account conn "Checking" :account.type/asset)
-    (add-account conn "Savings" :account.type/asset)
-    (add-account conn "Car" :account.type/asset "Savings")
-    (add-account conn "Reserve" :account.type/asset "Savings")
-    (add-account conn "Credit card" :account.type/liability)
-    (add-account conn "Opening balances" :account.type/equity)
-    (add-account conn "Salary" :account.type/income)
-    (add-account conn "Groceries" :account.type/expense)
-    (add-account conn "Food" :account.type/expense "Groceries")
-    (add-account conn "Non-food" :account.type/expense "Groceries")
+    (add-account conn {:account/name "Checking"         :account/type :account.type/asset})
+    (add-account conn {:account/name "Savings"          :account/type :account.type/asset})
+    (add-account conn {:account/name "Car"              :account/type :account.type/asset :account/parent "Savings"})
+    (add-account conn {:account/name "Reserve"          :account/type :account.type/asset :account/parent "Savings"})
+    (add-account conn {:account/name "Credit card"      :account/type :account.type/liability})
+    (add-account conn {:account/name "Opening balances" :account/type :account.type/equity})
+    (add-account conn {:account/name "Salary"           :account/type :account.type/income})
+    (add-account conn {:account/name "Groceries"        :account/type :account.type/expense})
+    (add-account conn {:account/name "Food"             :account/type :account.type/expense :account/parent "Groceries"})
+    (add-account conn {:account/name "Non-food"         :account/type :account.type/expense :account/parent "Groceries"})
 
     (add-budget conn "2015" #inst "2015-01-01")
     (add-budget-item conn "2015" "Salary"             (repeat 12 (bigdec 1800)))

@@ -127,18 +127,19 @@
            db
            id)))
 
+(def default-account-attributes
+  {:account/type :account.type/asset
+   :account/balance (bigdec 0)})
+
 (defn add-account
   "Saves an account to the database"
-  ([conn account-name] (add-account conn account-name :account.type/asset))
-  ([conn account-name account-type] (add-account conn account-name account-type nil))
-  ([conn account-name account-type parent]
-   (let [new-id (d/tempid :db.part/user)
-         tx-data {:db/id new-id
-                  :account/name account-name
-                  :account/type account-type
-                  :account/balance (bigdec 0)}
-         parent-id (if parent (resolve-account-id (d/db conn) parent))
-         all-tx-data (if parent-id (merge tx-data {:account/parent parent-id}) tx-data)]
+  ([conn name-or-attributes]
+   (let [attributes (if (string? name-or-attributes)
+                       (assoc default-account-attributes :account/name name-or-attributes)
+                       (merge default-account-attributes name-or-attributes))
+         tx-data (cond-> attributes
+                     true (assoc :db/id (d/tempid :db.part/user))
+                     (contains? attributes :account/parent) (update-in [:account/parent] #(resolve-account-id (d/db conn) %)))]
      @(d/transact
         conn
-        [all-tx-data]))))
+        [tx-data]))))

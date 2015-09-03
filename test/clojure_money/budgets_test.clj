@@ -10,9 +10,9 @@
   "Prepares the database for budget tests"
   []
   (let [conn (create-empty-db)]
-    (add-account conn "Salary" :account.type/income)
-    (add-account conn "Groceries" :account.type/expense)
-    (add-account conn "Checking" :account.type/asset)
+    (add-account conn {:account/name "Salary"    :account/type :account.type/income})
+    (add-account conn {:account/name "Groceries" :account/type :account.type/expense})
+    (add-account conn {:account/name "Checking"  :account/type :account.type/asset})
     conn))
 
 (deftest add-a-budget

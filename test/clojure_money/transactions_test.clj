@@ -5,11 +5,23 @@
         clojure-money.accounts
         clojure-money.transactions))
 
+(def account-defs [{:account/name "Checking"
+                    :account/type :account.type/asset}
+                   {:account/name "Salary"
+                    :account/type :account.type/income}
+                   {:account/name "Groceries"
+                    :account/type :account.type/expense}])
+
+(defn add-test-accounts
+  "Creates accounts needed for the tests"
+  [conn]
+  (doseq [account-def account-defs]
+    (add-account conn account-def)))
+
 (deftest add-a-transaction
   (testing "When I add a transaction, it appears in the list of transactions"
     (let [conn (create-empty-db)
-          _ (add-account conn "Checking" :account.type/asset)
-          _ (add-account conn "Salary" :account.type/income)
+          _ (add-test-accounts conn)
           _ (add-transaction conn
                              {:transaction/date #inst "2014-12-15"
                               :transaction/description "Paycheck"
@@ -29,8 +41,7 @@
       (is (= :transaction-item.action/credit (-> transaction :transaction/items second :transaction-item/action)))))
   (testing "An ID is returned that can be used to retrieve the transaction"
     (let [conn (create-empty-db)
-          _ (add-account conn "Checking" :account.type/asset)
-          _ (add-account conn "Salary" :account.type/income)
+          _ (add-test-accounts conn)
           id (add-transaction conn
                               {:transaction/date #inst "2014-12-15"
                                :transaction/description "Paycheck"
@@ -46,8 +57,7 @@
 (deftest a-transaction-must-be-in-balance
   (testing "An imbalanced transaction cannot be saved"
     (let [conn (create-empty-db)
-          _ (add-account conn "Checking" :account.type/asset)
-          _ (add-account conn "Salary" :account.type/income)]
+          _ (add-test-accounts conn)]
       (is (thrown-with-msg? IllegalArgumentException #"The transaction items must have balanced debit and credit totals"
                             (add-transaction conn
                                              {:transaction/date #inst "2014-12-15"
@@ -62,8 +72,7 @@
 (deftest add-a-simple-transaction
   (testing "Adding a simple transaction creates a full transaction"
     (let [conn (create-empty-db)
-          _ (add-account conn "Checking" :account.type/asset)
-          _ (add-account conn "Salary" :account.type/income)
+          _ (add-test-accounts conn)
           db (d/db conn)
           checking (find-account-id-by-path db "Checking")
           salary (find-account-id-by-path db "Salary")
@@ -77,8 +86,7 @@
       (is (= 2 (-> transaction :transaction/items count)))))
   (testing "Adding a simple transaction should affect the account balances properly"
     (let [conn (create-empty-db)
-          _ (add-account conn "Checking" :account.type/asset)
-          _ (add-account conn "Salary" :account.type/income)
+          _ (add-test-accounts conn)
           db (d/db conn)
           checking (find-account-id-by-path db "Checking")
           salary (find-account-id-by-path db "Salary")
@@ -94,9 +102,7 @@
 (defn calculate-account-balance-setup
   "Add transaction for calculate-account-balance tests"
   [conn]
-  (add-account conn "Salary" :account.type/income)
-  (add-account conn "Checking" :account.type/asset)
-  (add-account conn "Groceries" :account.type/expense)
+  (add-test-accounts conn)
   (let [db (d/db conn)
         salary (find-account-id-by-path db "Salary")
         checking (find-account-id-by-path db "Checking")

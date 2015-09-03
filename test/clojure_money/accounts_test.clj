@@ -38,19 +38,19 @@
 (deftest an-account-must-have-a-valid-type
   (testing "An account can be created with a valid type"
     (let [conn (create-empty-db)
-          _ (add-account conn "Credit card" :account.type/liability)
+          _ (add-account conn {:account/name "Credit card" :account/type :account.type/liability})
           accounts (all-accounts (d/db conn))]
       (is (= 1 (count accounts)))))
   (testing "An account cannot be created in an invalid type"
     (let [conn (create-empty-db)]
       (is (thrown-with-msg? Exception #"Unable to resolve entity: notatype"
-                            (add-account conn "Checking" "notatype"))))))
+                            (add-account conn {:account/name "Checking" :account/type "notatype"}))))))
 
 (deftest calculate-path-test
   (testing "Given an account and a list of accounts containing the parents, a path can be calculated"
     (let [conn (create-empty-db)
-          _ (add-account conn "Savings" :account.type/asset)
-          _ (add-account conn "Reserve" :account.type/asset "Savings")
+          _ (add-account conn {:account/name "Savings" :account/type :account.type/asset})
+          _ (add-account conn {:account/name "Reserve" :account/type :account.type/asset :account/parent "Savings"})
           accounts (all-accounts (d/db conn))
           paths (into #{} (map #(calculate-path-with-list % accounts) accounts))]
       (is (= #{"Savings" "Savings/Reserve"} paths)))))
@@ -60,7 +60,7 @@
    (let [conn (create-empty-db)]
      (create-and-retrieve-account conn account-name account-type)))
   ([conn account-name account-type]
-   (add-account conn account-name account-type)
+   (add-account conn {:account/name account-name :account/type account-type})
    (find-account-by-path (d/db conn) account-name)))
 
 (deftest an-account-is-left-side-or-right-side
@@ -98,7 +98,7 @@
       (is (= (bigdec 200) balance))))
   (testing "Debiting an expense account increases the balance"
     (let [conn (create-empty-db)
-          _ (add-account conn "Rent" :account.type/expense)
+          _ (add-account conn {:account/name "Rent" :account/type :account.type/expense})
           id (find-account-id-by-path (d/db conn) "Rent")
           _ (debit-account conn id (bigdec 101))
           _ (debit-account conn id (bigdec 101))
@@ -106,21 +106,21 @@
       (is (= (bigdec 202) balance))))
   (testing "Debiting a liability account decreases the balance"
     (let [conn (create-empty-db)
-          _ (add-account conn "Credit card" :account.type/liability)
+          _ (add-account conn {:account/name "Credit card" :account/type :account.type/liability})
           id (find-account-id-by-path (d/db conn) "Credit card")
           _ (debit-account conn id (bigdec 102))
           balance (get-balance (d/db conn) id)]
       (is (= (bigdec -102) balance))))
   (testing "Debiting an equity account decreases the balance"
     (let [conn (create-empty-db)
-          _ (add-account conn "Opening balances" :account.type/equity)
+          _ (add-account conn {:account/name "Opening balances" :account/type :account.type/equity})
           id (find-account-id-by-path (d/db conn) "Opening balances")
           _ (debit-account conn id (bigdec 103))
           balance (get-balance (d/db conn) id)]
       (is (= (bigdec -103) balance))))
   (testing "Debiting an income account decreases the balance"
     (let [conn (create-empty-db)
-          _ (add-account conn "Salary" :account.type/income)
+          _ (add-account conn {:account/name "Salary" :account/type :account.type/income})
           id (find-account-id-by-path (d/db conn) "Salary")
           _ (debit-account conn id (bigdec 104))
           balance (get-balance (d/db conn) id)]
@@ -136,28 +136,28 @@
       (is (= (bigdec -100) balance))))
   (testing "Crediting an expense account decreases the balance"
     (let [conn (create-empty-db)
-          _ (add-account conn "Rent" :account.type/expense)
+          _ (add-account conn {:account/name "Rent" :account/type :account.type/expense})
           id (find-account-id-by-path (d/db conn) "Rent")
           _ (credit-account conn id (bigdec 111))
           balance (get-balance (d/db conn) id)]
       (is (= (bigdec -111) balance))))
   (testing "Crediting a liability account increases the balance"
     (let [conn (create-empty-db)
-          _ (add-account conn "Credit card" :account.type/liability)
+          _ (add-account conn {:account/name "Credit card" :account/type :account.type/liability})
           id (find-account-id-by-path (d/db conn) "Credit card")
           _ (credit-account conn id (bigdec 112))
           balance (get-balance (d/db conn) id)]
       (is (= (bigdec 112) balance))))
   (testing "Crediting an equity account increases the balance"
     (let [conn (create-empty-db)
-          _ (add-account conn "Opening balances" :account.type/equity)
+          _ (add-account conn {:account/name "Opening balances" :account/type :account.type/equity})
           id (find-account-id-by-path (d/db conn) "Opening balances")
           _ (credit-account conn id (bigdec 113))
           balance (get-balance (d/db conn) id)]
       (is (= (bigdec 113) balance))))
   (testing "Crediting an income account increases the balance"
     (let [conn (create-empty-db)
-          _ (add-account conn "Salary" :account.type/income)
+          _ (add-account conn {:account/name "Salary" :account/type :account.type/income})
           id (find-account-id-by-path (d/db conn) "Salary")
           _ (credit-account conn id (bigdec 114))
           balance (get-balance (d/db conn) id)]
@@ -166,25 +166,25 @@
 (deftest add-a-child-account
   (testing "A a child account can be accessed via its parent"
     (let [conn (create-empty-db)
-          _ (add-account conn "Savings" :account.type/asset)
-          _ (add-account conn "Car", :account.type/asset, "Savings")
+          _ (add-account conn {:account/name "Savings" :account/type :account.type/asset})
+          _ (add-account conn {:account/name "Car" :account/type :account.type/asset :account/parent "Savings"})
           children (child-accounts (d/db conn) "Savings")]
       (is (= 1 (count children)))
       (is (= "Car") (-> children first :account/name))))
   (testing "A child can be retrieved directly by path"
     (let [conn (create-empty-db)
-          _ (add-account conn "Savings" :account.type/asset)
-          _ (add-account conn "Car" :account.type/asset "Savings")
+          _ (add-account conn {:account/name "Savings" :account/type :account.type/asset})
+          _ (add-account conn {:account/name "Car" :account/type :account.type/asset :account/parent "Savings"})
           child (find-account-by-path (d/db conn) "Savings/Car")]
       (is (= "Car") (:account/name child)))))
 
 (deftest get-root-accounts
   (testing "Root accounts can be retrieved together"
     (let [conn (create-empty-db)
-          _ (add-account conn "Savings" :account.type/asset)
-          _ (add-account conn "Car" :account.type/asset "Savings")
-          _ (add-account conn "Reserve" :account.type/asset "Savings")
-          _ (add-account conn "Opening Balances" :account.type/equity)
+          _ (add-account conn {:account/name "Savings" :account/type :account.type/asset})
+          _ (add-account conn {:account/name "Car" :account/type :account.type/asset :account/parent "Savings"})
+          _ (add-account conn {:account/name "Reserve" :account/type :account.type/asset :account/parent "Savings"})
+          _ (add-account conn {:account/name "Opening Balances" :account/type :account.type/equity})
           root-accounts (->> conn
                              d/db
                              root-accounts
@@ -196,9 +196,9 @@
 (deftest get-stacked-accounts
   (testing "Accounts can be retrieved such that children accounts are contained by their parents"
     (let [conn (create-empty-db)
-          _ (add-account conn "Savings" :account.type/asset)
-          _ (add-account conn "Car" :account.type/asset "Savings")
-          _ (add-account conn "Reserve" :account.type/asset "Savings")
+          _ (add-account conn {:account/name "Savings" :account/type :account.type/asset})
+          _ (add-account conn {:account/name "Car" :account/type :account.type/asset :account/parent "Savings"})
+          _ (add-account conn {:account/name "Reserve" :account/type :account.type/asset :account/parent "Savings"})
           stacked (stacked-accounts (d/db conn))]
       (is (= "Savings" (-> stacked first :account/name)))
       (is (= "Car" (-> stacked first :children first :account/name)))
