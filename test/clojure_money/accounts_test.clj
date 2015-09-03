@@ -43,8 +43,21 @@
       (is (= 1 (count accounts)))))
   (testing "An account cannot be created in an invalid type"
     (let [conn (create-empty-db)]
-      (is (thrown-with-msg? Exception #"Unable to resolve entity: notatype"
+      (is (thrown-with-msg? Exception #"The account information supplied is not valid."
                             (add-account conn {:account/name "Checking" :account/type "notatype"}))))))
+
+(deftest validations-test
+  (testing "Name is a required field"
+    (let [conn (create-empty-db)]
+      (is (thrown-with-msg? Exception #"The account information supplied is not valid."
+                            (add-account conn {})))))
+  (testing "An account cannot have a parent with a different type"
+    (let [conn (create-empty-db)
+          checking (add-account conn "Checking")]
+      (is (thrown-with-msg? Exception #"The account information supplied is not valid."
+                            (add-account conn {:account/name "Rent"
+                                               :account/type :account.type/expense
+                                               :account/parent "Checking"}))))))
 
 (deftest calculate-path-test
   (testing "Given an account and a list of accounts containing the parents, a path can be calculated"
