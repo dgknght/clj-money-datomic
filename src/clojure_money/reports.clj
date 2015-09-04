@@ -14,39 +14,20 @@
 ;; Rather, it should compose HOF from accounts and transactions
 ;; to create the reports
 
-(defn strip-unneeded-values
-  "Removes values that are unneeded for reporting purposes"
-  [report-data]
-  (map #(select-keys % [:caption
-                        :value
-                        :depth
-                        :style
-                        :budget
-                        :difference
-                        :percent-difference
-                        :actual-per-month]) report-data))
-
-;TODO Remove this?
-(defn group-by-type
-  "Takes a list of display records and returns a hash with account types as keys,
-  removing the account type from each item in the list"
-  [display-records]
-  (group-by :account/type display-records))
-
 (defn sum-by-type
   "Calculates the sum of root records of the specified type from the specified records"
-  [account-type display-records]
+  [account-type attribute display-records]
   (->> display-records
        (filter #(and (= 0 (:depth %))
                      (= account-type (:account-type %))))
-       (reduce #(+ %1 (:value %2)) 0)))
+       (reduce #(+ %1 (attribute %2)) 0)))
 
 (defn append-retained-earnings
   "Takes a sequence of display records and inserts a 'Retained earnings'
   record of type equity based on the income and expense totals"
   [display-records]
-  (let [income (sum-by-type :account.type/income display-records)
-        expense (sum-by-type :account.type/expense display-records)
+  (let [income (sum-by-type :account.type/income :value display-records)
+        expense (sum-by-type :account.type/expense :value display-records)
         retained-earnings (- income expense)]
     (conj display-records {:caption "Retained earnings"
                            :path "Retained earnings"
@@ -54,46 +35,6 @@
                            :style :data
                            :account-type :account.type/equity
                            :depth 0})))
-
-(defn map-keys
-  "Takes a map containing datomic keys and returns a map with 
-  report-ready keys, omitting unecessary values"
-  [account]
-  (-> account
-      (rename-keys {:account/name :caption :account/balance :value})
-      (assoc :style :data)))
-
-(defn sum
-  "Returns the sum of the values of the specified records"
-  [ks accounts]
-  (zipmap ks (map (fn [k] (reduce #(+ %1 (k %2)) 0 accounts)) ks)))
-
-;TODO remove this?
-(defn append-totals
-  "Takes a hash with account types for keys and a list of display records for values and
-  converts the list of display-records into a vector containing the list of accounts and
-  the total for the accounts in each group"
-  [ks grouped-accounts]
-  (reduce (fn [result [k accounts]]
-            (let [group-total (->> accounts
-                                   (filter #(= 0 (:depth %)))
-                                   (sum ks))]
-              (assoc result k [accounts group-total])))
-          {}
-          grouped-accounts))
-
-(defn format-account
-  "Takes an entity map of an account and formats it for a report"
-  [account]
-  (-> account
-      (rename-keys {:account/name :caption :account/balance :value})
-      (select-keys [:caption :value])
-      (assoc :depth 0 :style :data)))
-
-(defn format-accounts
-  "Takes a list of accounts and formats them for a report"
-  [accounts]
-  (map format-account accounts))
 
 (def account-type-caption-map {:account.type/asset "Assets"
                                :account.type/liability "Liabilities"
@@ -116,9 +57,12 @@
               (let [record-group (account-type grouped)]
                 (concat result
                         [{:caption (account-type account-type-caption-map)
+                          :path (account-type account-type-caption-map) ;TODO Can we eliminate this redundancy?
                           :depth 0
                           :style :header
-                          :value (sum-by-type account-type record-group)}]
+                          :value (sum-by-type account-type :value record-group)
+                          ;:budget (sum-by-type account-type :budget record-group)
+                          }] ; TODO only sum the attributes required by the report
                         (sort-by :path record-group))))
             []
             account-types)))
@@ -146,7 +90,7 @@
         children (set-balances db from to (child-display-records display-record all-records))
         sum-of-children (reduce #(+ %1 (:value %2)) 0 children)
         final-balance (+ calculated sum-of-children)]
-    (assoc display-record :value final-balance :children children)))
+    (assoc display-record :value final-balance)))
 
 (defn set-balances
   "Sets the :value values for the specified display records for the specified time frame"
@@ -207,19 +151,16 @@
        (interleave-summaries income-statement-account-types)))
 
 (defn append-budget-amount
-  [db budget periods account]
-  (let [children (map #(append-budget-amount db budget periods %) (:children account))
-        budget-amount (+ (reduce #(+ %1 (:budget %2)) 0 children) (get-budget-amount db budget account periods))]
-    (assoc account :budget budget-amount
-                   :children children)))
+  [db budget periods {account :account :as display-record}]
+  (assoc display-record :budget (get-budget-amount db budget account periods)))
 
 (defn append-analysis
-  [{budget-amount :budget actual :value :as row} periods]
-  (let [difference (- actual budget-amount)
-        percent-difference (if (not= budget-amount 0)
-                             (with-precision 3 (/ difference budget-amount)))
-        actual-per-month (with-precision 2  (/ actual periods))]
-    (assoc row :difference difference
+  [{:keys [budget value] :as display-record} periods]
+  (let [difference (- value budget)
+        percent-difference (if (not= budget 0)
+                             (with-precision 3 (/ difference budget)))
+        actual-per-month (with-precision 2  (/ value periods))]
+    (assoc display-record :difference difference
            :percent-difference percent-difference
            :actual-per-month actual-per-month)))
 
@@ -227,17 +168,12 @@
   "Returns a budget using the specified budget and including the specified periods"
   [db budget-or-name periods]
   (let [budget (resolve-budget db budget-or-name)]
-    (->> (stacked-accounts db)
+    (->> (display-records db)
+         (filter #(#{:account.type/income :account.type/expense} (:account-type %)))
          (set-balances db (:budget/start-date budget) (budget-end-date budget))
          (map #(append-budget-amount db budget periods %))
-         flatten-accounts
-         (map map-keys)
-         (sort-by :account/type)
-         (group-by-type)
-         (append-totals [:value :budget])
          (interleave-summaries [:account.type/income :account.type/expense])
-         (map #(append-analysis % periods))
-         strip-unneeded-values)))
+         (map #(append-analysis % periods)))))
 
 (defn budget-monitor
   "Returns information about the spending level in an account compared to
