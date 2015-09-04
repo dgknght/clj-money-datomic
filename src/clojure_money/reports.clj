@@ -5,7 +5,8 @@
         clojure-money.transactions
         clojure-money.util
         clojure.set)
-  (:require [clj-time.coerce :as c]
+  (:require [clojure.string :as string]
+            [clj-time.coerce :as c]
             [clj-time.core :as t])
   (:gen-class))
 
@@ -146,6 +147,24 @@
   ([accounts] (flatten-accounts accounts 0))
   ([accounts depth]
    (reduce #(concat %1 (flatten-account %2 depth)) [] accounts)))
+
+(defn calculate-depth
+  "Returns an account's depth based on its path"
+  [path]
+  (-> path
+      (string/split #"/")
+      count
+      dec))
+
+(defn display-records
+  [db]
+  (->> (all-accounts db)
+       (map #(hash-map :account % :caption (:account/name %)))
+       (map (fn [{account :account :as record}]
+              (assoc record :path (calculate-path-with-list account all-accounts))))
+       (sort-by :path)
+       (map (fn [{path :path :as record}]
+              (assoc record :depth (calculate-depth path))))))
 
 (defn balance-sheet-report
   "Returns a balance sheet report"

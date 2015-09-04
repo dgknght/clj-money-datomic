@@ -1,5 +1,6 @@
 (ns clojure-money.reports-test
   (:require [clojure.test :refer :all]
+            [clojure.data :refer [diff]]
             [datomic.api :as d :refer [db]])
   (:use clojure-money.test-common
         clojure-money.accounts
@@ -133,3 +134,18 @@
                      :actual (bigdec 200)
                      :actual-percent (bigdec 0.8)
                      :projected (bigdec 310)})))))
+
+(deftest create-display-records
+  (testing "Display records can be created from existing accounts"
+    (let [conn (create-empty-db)
+          _ (add-accounts conn ["Checking"
+                                "Savings"
+                                {:account/name "Reserve" :account/parent "Savings"}
+                                {:account/name "Salary" :account/type :account.type/income}])
+          display-records (display-records (d/db conn))
+          actual (map #(select-keys % [:caption :depth :path]) display-records)
+          expected [{:caption "Checking" :path "Checking"        :depth 0}
+                    {:caption "Salary"   :path "Salary"          :depth 0}
+                    {:caption "Savings"  :path "Savings"         :depth 0}
+                    {:caption "Reserve"  :path "Savings/Reserve" :depth 1}]]
+      (is (= expected actual)))))
