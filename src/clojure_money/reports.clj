@@ -26,25 +26,34 @@
                         :percent-difference
                         :actual-per-month]) report-data))
 
+;TODO Remove this?
 (defn group-by-type
-  "Takes a list of accounts and returns a hash with account types as keys,
+  "Takes a list of display records and returns a hash with account types as keys,
   removing the account type from each item in the list"
-  [accounts]
-  (group-by :account/type accounts))
+  [display-records]
+  (group-by :account/type display-records))
 
-(defn calculate-retained-earnings
-  "Takes a map of accounts grouped by type and inserts a 'Retained earnings'
-  entry into the equity accounts based on the income and expense values"
-  [{[_ {income :value}] :account.type/income
-    [_ {expense :value}] :account.type/expense
-    :as grouped-accounts}]
-  (let [retained-earnings (- income expense)]
-    (-> grouped-accounts
-        (update-in [:account.type/equity 0] #(conj % {:caption "Retained earnings"
-                                                      :value retained-earnings
-                                                      :style :data
-                                                      :depth 0}))
-        (update-in [:account.type/equity 1 :value] #(+ % retained-earnings)))))
+(defn sum-by-type
+  "Calculates the sum of root records of the specified type from the specified records"
+  [account-type display-records]
+  (->> display-records
+       (filter #(and (= 0 (:depth %))
+                     (= account-type (:account-type %))))
+       (reduce #(+ %1 (:value %2)) 0)))
+
+(defn append-retained-earnings
+  "Takes a sequence of display records and inserts a 'Retained earnings'
+  record of type equity based on the income and expense totals"
+  [display-records]
+  (let [income (sum-by-type :account.type/income display-records)
+        expense (sum-by-type :account.type/expense display-records)
+        retained-earnings (- income expense)]
+    (conj display-records {:caption "Retained earnings"
+                           :path "Retained earnings"
+                           :value retained-earnings
+                           :style :data
+                           :account-type :account.type/equity
+                           :depth 0})))
 
 (defn map-keys
   "Takes a map containing datomic keys and returns a map with 
@@ -59,15 +68,10 @@
   [ks accounts]
   (zipmap ks (map (fn [k] (reduce #(+ %1 (k %2)) 0 accounts)) ks)))
 
-;; Input looks like
-;; {:account.type/asset [{:caption "Checking" :value 100 :depth 0 :style :data}
-;;                       {:caption "Savings"  :value 150 :depth 0 :style :data}]}
-;; Output looks like
-;; {:account.type/asset [[{:caption "Checking" :value 100 :depth 0 :style :data}
-;;                        {:caption "Savings"  :value 150 :depth 0 :style :data}] {:value 250}]}
+;TODO remove this?
 (defn append-totals
-  "Takes a hash with account types for keys and a list of accounts for values and
-  converts the list of accounts into a vector containing the list of accounts and
+  "Takes a hash with account types for keys and a list of display records for values and
+  converts the list of display-records into a vector containing the list of accounts and
   the total for the accounts in each group"
   [ks grouped-accounts]
   (reduce (fn [result [k accounts]]
@@ -101,38 +105,56 @@
                                   :account.type/liability
                                   :account.type/equity])
 
-;; Input data is a hash map where each key is an account type and each value
-;; is a vector containing the list of accounts and the sum of the account values
-;; {account-type [vector-of-accounts sum-of-account-values]}
-;; Output data is a list of hash maps that look like this
-;; {:caption "Assets" :value 2000 :depth 0 :style :header}
+(def income-statement-account-types [:account.type/income
+                                     :account.type/expense])
+
 (defn interleave-summaries
-  "Takes a list of accounts grouped by account type interleaves account type summaries"
-  [account-types grouped-accounts]
-  (reduce (fn [result t]
-            (apply vector (concat (conj result (merge {:caption (t account-type-caption-map)
-                                                       :style :header
-                                                       :depth 0 }(last (t grouped-accounts))))
-                                  (first (t grouped-accounts)))))
-          []
-          account-types))
+  "Takes a list of display records and interleaves account type summary records"
+  [account-types display-records]
+  (let [grouped (group-by :account-type display-records)]
+    (reduce (fn [result account-type]
+              (let [record-group (account-type grouped)]
+                (concat result
+                        [{:caption (account-type account-type-caption-map)
+                          :depth 0
+                          :style :header
+                          :value (sum-by-type account-type record-group)}]
+                        (sort-by :path record-group))))
+            []
+            account-types)))
+
+(defn starts-with
+  "Compares two strings to see if string-a starts with string-b"
+  [string-a string-b]
+  (let [len (count string-b)]
+  (= (take len string-a)
+     (take len string-b))))
+
+(defn child-display-records
+  "Extracts the display records for the accounts that are children of the account referenced by the specified display record"
+  [{specified-path :path} all-records]
+  (filter (fn [{path :path}]
+            (and (not= specified-path path)
+                 (starts-with path specified-path)))
+          all-records))
 
 (declare set-balances)
 (defn set-balance
-  "Gets the balance for the specified account over the specified time"
-  [db from to account]
+  "Sets the :value for the specified display record for the specified time frame"
+  [db from to {account :account :as display-record} all-records]
   (let [calculated (calculate-account-balance db (:db/id account) from to)
-        children (set-balances db from to (:children account))
-        sum-of-children (reduce #(+ %1 (:account/balance %2)) 0 children)
+        children (set-balances db from to (child-display-records display-record all-records))
+        sum-of-children (reduce #(+ %1 (:value %2)) 0 children)
         final-balance (+ calculated sum-of-children)]
-    (assoc account :account/balance final-balance :children children)))
+    (assoc display-record :value final-balance :children children)))
 
 (defn set-balances
-  "Sets the :account/balance value for each account based on the specified date"
-  ([db to accounts] (set-balances db earliest-date to accounts))
-  ([db from to accounts]
-   (map #(set-balance db from to %) accounts)))
+  "Sets the :value values for the specified display records for the specified time frame"
+  ([db to display-records] (set-balances db earliest-date to display-records)) ;TODO Shortcut this for balance sheet reports as of the current date
+  ([db from to display-records]
+   (map #(set-balance db from to % display-records) display-records)))
 
+;TODO remove these?
 (declare flatten-accounts)
 (defn flatten-account
   "Accepts an account with a :children attribute and returns a list containing 
@@ -159,7 +181,10 @@
 (defn display-records
   [db]
   (->> (all-accounts db)
-       (map #(hash-map :account % :caption (:account/name %)))
+       (map #(hash-map :account %
+                       :caption (:account/name %)
+                       :account-type (:account/type %)
+                       :style :data))
        (map (fn [{account :account :as record}]
               (assoc record :path (calculate-path-with-list account all-accounts))))
        (sort-by :path)
@@ -169,28 +194,17 @@
 (defn balance-sheet-report
   "Returns a balance sheet report"
   [db as-of-date]
-  (->> (stacked-accounts db)
+  (->> (display-records db)
        (set-balances db as-of-date)
-       flatten-accounts
-       (map map-keys)
-       group-by-type
-       (append-totals [:value])
-       calculate-retained-earnings
-       (interleave-summaries balance-sheet-account-types)
-       strip-unneeded-values))
+       append-retained-earnings
+       (interleave-summaries balance-sheet-account-types)))
 
 (defn income-statement-report
   "Returns an income statement report"
   [db from to]
-  (->> (stacked-accounts db)
+  (->> (display-records db)
        (set-balances db from to)
-       flatten-accounts
-       (map map-keys)
-       (sort-by :account/type)
-       (group-by-type)
-       (append-totals [:value])
-       (interleave-summaries [:account.type/income :account.type/expense])
-       strip-unneeded-values))
+       (interleave-summaries income-statement-account-types)))
 
 (defn append-budget-amount
   [db budget periods account]
