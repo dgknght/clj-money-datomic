@@ -51,18 +51,18 @@
 
 (defn interleave-summaries
   "Takes a list of display records and interleaves account type summary records"
-  [account-types display-records]
+  [account-types keys-to-sum display-records]
   (let [grouped (group-by :account-type display-records)]
     (reduce (fn [result account-type]
-              (let [record-group (account-type grouped)]
+              (let [record-group (account-type grouped)
+                    summary (reduce #(assoc %1 %2 (sum-by-type account-type %2 display-records))
+                                    {:caption (account-type account-type-caption-map)
+                                     :path (account-type account-type-caption-map) ;TODO Can we eliminate this redundancy?
+                                     :depth 0
+                                     :style :header}
+                                    keys-to-sum)]
                 (concat result
-                        [{:caption (account-type account-type-caption-map)
-                          :path (account-type account-type-caption-map) ;TODO Can we eliminate this redundancy?
-                          :depth 0
-                          :style :header
-                          :value (sum-by-type account-type :value record-group)
-                          ;:budget (sum-by-type account-type :budget record-group)
-                          }] ; TODO only sum the attributes required by the report
+                        [summary]
                         (sort-by :path record-group))))
             []
             account-types)))
@@ -141,14 +141,14 @@
   (->> (display-records db)
        (set-balances db as-of-date)
        append-retained-earnings
-       (interleave-summaries balance-sheet-account-types)))
+       (interleave-summaries balance-sheet-account-types [:value])))
 
 (defn income-statement-report
   "Returns an income statement report"
   [db from to]
   (->> (display-records db)
        (set-balances db from to)
-       (interleave-summaries income-statement-account-types)))
+       (interleave-summaries income-statement-account-types [:value])))
 
 (defn append-budget-amount
   [db budget periods {account :account :as display-record}]
@@ -157,7 +157,7 @@
 (defn append-analysis
   [{:keys [budget value] :as display-record} periods]
   (let [difference (- value budget)
-        percent-difference (if (not= budget 0)
+        percent-difference (if-not (= budget 0)
                              (with-precision 3 (/ difference budget)))
         actual-per-month (with-precision 2  (/ value periods))]
     (assoc display-record :difference difference
@@ -172,7 +172,7 @@
          (filter #(#{:account.type/income :account.type/expense} (:account-type %)))
          (set-balances db (:budget/start-date budget) (budget-end-date budget))
          (map #(append-budget-amount db budget periods %))
-         (interleave-summaries [:account.type/income :account.type/expense])
+         (interleave-summaries [:account.type/income :account.type/expense] [:value :budget])
          (map #(append-analysis % periods)))))
 
 (defn budget-monitor
