@@ -75,7 +75,16 @@
 
 (defn interleave-summaries
   "Takes a list of display records and interleaves account type summary records"
-  [account-types keys-to-sum totals-are-rolled-up sort-key summary-prep-fn display-records]
+  [{:keys [account-types
+           keys-to-sum
+           totals-are-rolled-up
+           sort-key
+           summary-prep-fn]
+    :or {keys-to-sum [:value]
+         totals-are-rolled-up false
+         sort-key :path
+         summary-prep-fn identity}}
+   display-records]
   (let [grouped (group-by :account-type display-records)]
     (reduce (fn [result account-type]
               (let [record-group (->> grouped account-type (sort-by sort-key))
@@ -177,14 +186,16 @@
   (->> (display-records db)
        (set-balances-with-rollup db as-of-date)
        append-retained-earnings
-       (interleave-summaries balance-sheet-account-types [:value] true :path identity)))
+       (interleave-summaries {:account-types balance-sheet-account-types
+                              :totals-are-rolled-up true})))
 
 (defn income-statement-report
   "Returns an income statement report"
   [db from to]
   (->> (display-records db)
        (set-balances-with-rollup db from to)
-       (interleave-summaries income-statement-account-types [:value] true :path identity)))
+       (interleave-summaries {:account-types income-statement-account-types
+                              :totals-are-rolled-up true})))
 
 (defn append-budget-amount
   [db budget periods {account :account :as display-record}]
@@ -211,7 +222,10 @@
          (map #(append-budget-amount db budget periods %))
          (remove (fn [{:keys [value budget]}] (= (bigdec 0) value budget)))
          (map #(append-analysis % periods))
-         (interleave-summaries [:account.type/income :account.type/expense] [:value :budget] false :difference #(append-analysis % periods)))))
+         (interleave-summaries {:account-types [:account.type/income :account.type/expense]
+                                :keys-to-sum [:value :budget]
+                                :sort-key :difference
+                                :summary-prep-fn #(append-analysis % periods)}))))
 
 (defn budget-monitor
   "Returns information about the spending level in an account compared to
