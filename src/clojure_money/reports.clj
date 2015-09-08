@@ -86,7 +86,7 @@
          summary-prep-fn identity}}
    display-records]
   (let [grouped (group-by :account-type display-records)]
-    (reduce (fn [result account-type]
+    (mapcat (fn [account-type]
               (let [record-group (->> grouped account-type (sort-by sort-key))
                     x-fn (if totals-are-rolled-up
                            sum-root-accounts
@@ -99,10 +99,7 @@
                                                     (mapcat (fn [k]
                                                               [k (transduce (x-fn k) + record-group)])
                                                             keys-to-sum)))]
-                (concat result
-                        [summary]
-                        record-group)))
-            []
+                (cons summary record-group)))
             account-types)))
 
 (defn starts-with
