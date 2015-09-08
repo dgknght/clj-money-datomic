@@ -88,7 +88,7 @@
         account (resolve-account db account-or-name)
         item (find-budget-item budget account)]
     (reduce #(+ %1 (:budget-item-period/amount %2))
-            0
+            (bigdec 0)
             (take periods (:budget-item/periods item)))))
 
 (defn between?
