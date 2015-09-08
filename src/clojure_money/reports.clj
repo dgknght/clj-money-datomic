@@ -6,6 +6,7 @@
         clojure-money.util
         clojure.set)
   (:require [clojure.string :as string]
+            [clojure.pprint :refer [pprint]]
             [clj-time.coerce :as c]
             [clj-time.core :as t])
   (:gen-class))
@@ -20,7 +21,7 @@
   (->> display-records
        (filter #(and (= 0 (:depth %))
                      (= account-type (:account-type %))))
-       (reduce #(+ %1 (attribute %2)) 0)))
+       (reduce #(+ %1 (attribute %2)) (bigdec 0))))
 
 (defn append-retained-earnings
   "Takes a sequence of display records and inserts a 'Retained earnings'
@@ -51,19 +52,24 @@
 
 (defn interleave-summaries
   "Takes a list of display records and interleaves account type summary records"
-  [account-types keys-to-sum display-records]
+  [account-types keys-to-sum totals-are-rolled-up sort-key summary-prep-fn display-records]
   (let [grouped (group-by :account-type display-records)]
     (reduce (fn [result account-type]
-              (let [record-group (account-type grouped)
-                    summary (reduce #(assoc %1 %2 (sum-by-type account-type %2 display-records))
-                                    {:caption (account-type account-type-caption-map)
-                                     :path (account-type account-type-caption-map) ;TODO Can we eliminate this redundancy?
-                                     :depth 0
-                                     :style :header}
-                                    keys-to-sum)]
+              (let [record-group (->> grouped account-type (sort-by sort-key))
+                    to-sum (if totals-are-rolled-up
+                             (filter #(= 0 (:depth %)) record-group)
+                             record-group)
+                    summary (summary-prep-fn (apply assoc
+                                                    {:caption (account-type account-type-caption-map)
+                                                     :path (account-type account-type-caption-map) ;TODO Can we eliminate this redundancy?
+                                                     :depth 0
+                                                     :style :header}
+                                                    (mapcat (fn [k]
+                                                           [k (reduce #(+ %1 (k %2)) (bigdec 0) to-sum)])
+                                                         keys-to-sum)))]
                 (concat result
                         [summary]
-                        (sort-by :path record-group))))
+                        record-group)))
             []
             account-types)))
 
@@ -82,21 +88,28 @@
                  (starts-with path specified-path)))
           all-records))
 
-(declare set-balances)
-(defn set-balance
+(declare set-balances-with-rollup)
+(defn set-balance-with-rollup
   "Sets the :value for the specified display record for the specified time frame"
   [db from to {account :account :as display-record} all-records]
   (let [calculated (calculate-account-balance db (:db/id account) from to)
-        children (set-balances db from to (child-display-records display-record all-records))
+        children (set-balances-with-rollup db from to (child-display-records display-record all-records))
         sum-of-children (reduce #(+ %1 (:value %2)) 0 children)
         final-balance (+ calculated sum-of-children)]
     (assoc display-record :value final-balance)))
 
-(defn set-balances
+(defn set-balances-with-rollup
   "Sets the :value values for the specified display records for the specified time frame"
-  ([db to display-records] (set-balances db earliest-date to display-records)) ;TODO Shortcut this for balance sheet reports as of the current date
+  ([db to display-records] (set-balances-with-rollup db earliest-date to display-records)) ;TODO Shortcut this for balance sheet reports as of the current date
   ([db from to display-records]
-   (map #(set-balance db from to % display-records) display-records)))
+   (map #(set-balance-with-rollup db from to % display-records) display-records)))
+
+(defn set-balance
+  "Sets the balance of the display record without rolling values up to parent rows"
+  [db from to {{account-id :db/id} :account :as display-record}]
+  (assoc display-record
+         :value
+         (calculate-account-balance db account-id from to)))
 
 ;TODO remove these?
 (declare flatten-accounts)
@@ -139,16 +152,16 @@
   "Returns a balance sheet report"
   [db as-of-date]
   (->> (display-records db)
-       (set-balances db as-of-date)
+       (set-balances-with-rollup db as-of-date)
        append-retained-earnings
-       (interleave-summaries balance-sheet-account-types [:value])))
+       (interleave-summaries balance-sheet-account-types [:value] true :path identity)))
 
 (defn income-statement-report
   "Returns an income statement report"
   [db from to]
   (->> (display-records db)
-       (set-balances db from to)
-       (interleave-summaries income-statement-account-types [:value])))
+       (set-balances-with-rollup db from to)
+       (interleave-summaries income-statement-account-types [:value] true :path identity)))
 
 (defn append-budget-amount
   [db budget periods {account :account :as display-record}]
@@ -157,7 +170,7 @@
 (defn append-analysis
   [{:keys [budget value] :as display-record} periods]
   (let [difference (- value budget)
-        percent-difference (if-not (= budget 0)
+        percent-difference (if-not (= budget (bigdec 0))
                              (with-precision 3 (/ difference budget)))
         actual-per-month (with-precision 2  (/ value periods))]
     (assoc display-record :difference difference
@@ -167,13 +180,15 @@
 (defn budget-report
   "Returns a budget using the specified budget and including the specified periods"
   [db budget-or-name periods]
-  (let [budget (resolve-budget db budget-or-name)]
+  (let [{budget-start :budget/start-date :as budget} (resolve-budget db budget-or-name)
+        budget-end (budget-end-date budget)]
     (->> (display-records db)
          (filter #(#{:account.type/income :account.type/expense} (:account-type %)))
-         (set-balances db (:budget/start-date budget) (budget-end-date budget))
+         (map #(set-balance db budget-start budget-end  %))
          (map #(append-budget-amount db budget periods %))
-         (interleave-summaries [:account.type/income :account.type/expense] [:value :budget])
-         (map #(append-analysis % periods)))))
+         (remove (fn [{:keys [value budget]}] (= (bigdec 0) value budget)))
+         (map #(append-analysis % periods))
+         (interleave-summaries [:account.type/income :account.type/expense] [:value :budget] false :difference #(append-analysis % periods)))))
 
 (defn budget-monitor
   "Returns information about the spending level in an account compared to

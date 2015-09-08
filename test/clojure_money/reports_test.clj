@@ -1,5 +1,6 @@
 (ns clojure-money.reports-test
   (:require [clojure.test :refer :all]
+            [clojure.pprint :refer [pprint]]
             [clojure.data :refer [diff]]
             [datomic.api :as d :refer [db]])
   (:use clojure-money.test-common
@@ -25,7 +26,7 @@
 
     (add-budget conn "2015" #inst "2015-01-01")
     (add-budget-item conn "2015" "Salary"             (repeat 12 (bigdec 1800)))
-    (add-budget-item conn "2015" "Groceries/Food"     (repeat 12 (bigdec  250)))
+    (add-budget-item conn "2015" "Groceries/Food"     (repeat 12 (bigdec  245)))
     (add-budget-item conn "2015" "Groceries/Non-food" (repeat 12 (bigdec  150)))
 
     (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
@@ -123,42 +124,39 @@
 
 (defn report-diff
   [expected actual]
-  (let [extracted-actual (mapv #(select-keys % (-> expected first keys)) actual)]
-    (dorun (map-indexed (fn [index e]
-                          (let [a (get extracted-actual index)
-                                d (clojure.data/diff e a)]
-                            (when (first d)
-                              (println "expected: " (prn-str e))
-                              (println "actual: " (prn-str a))
-                              (println "diff: " (prn-str d))
-                              (println "-------------------------------"))))
-                        expected))))
+  (dorun (map-indexed (fn [index e]
+                        (let [a (get actual index)
+                              d (clojure.data/diff e a)]
+                          (when (first d)
+                            (println "expected: " (prn-str e))
+                            (println "actual: " (prn-str a))
+                            (println "diff: " (prn-str d))
+                            (println "-------------------------------"))))
+                      expected)))
 
 (deftest create-a-budget-report
   (testing "A budget report compaers budgeted amounts to actual amounts"
     (let [conn (populate-db)
-          actual (budget-report (d/db conn) "2015" 1)
           expected [{:path "Income"             :budget (bigdec 1800) :value (bigdec 2000) :difference (bigdec  200) :percent-difference (bigdec  0.111) :actual-per-month (bigdec 2000) :depth 0 :style :header}
                     {:path "Salary"             :budget (bigdec 1800) :value (bigdec 2000) :difference (bigdec  200) :percent-difference (bigdec  0.111) :actual-per-month (bigdec 2000) :depth 0 :style :data}
-                    {:path "Expense"            :budget  (bigdec 400) :value  (bigdec 300) :difference (bigdec -100) :percent-difference (bigdec -0.250) :actual-per-month  (bigdec 300) :depth 0 :style :header }
-                    {:path "Groceries"          :budget  (bigdec 400) :value  (bigdec 300) :difference (bigdec -100) :percent-difference (bigdec -0.250) :actual-per-month  (bigdec 300) :depth 0 :style :data }
-                    {:path "Groceries/Food"     :budget  (bigdec 250) :value  (bigdec 200) :difference  (bigdec -50) :percent-difference (bigdec -0.200) :actual-per-month  (bigdec 200) :depth 1 :style :data }
-                    {:path "Groceries/Non-food" :budget  (bigdec 150) :value  (bigdec 100) :difference  (bigdec -50) :percent-difference (bigdec -0.333) :actual-per-month  (bigdec 100) :depth 1 :style :data }]]
-
-      (report-diff expected actual)
-
-      #_(is (= expected actual)))))
+                    {:path "Expense"            :budget  (bigdec 395) :value  (bigdec 300) :difference  (bigdec -95) :percent-difference (bigdec -0.241) :actual-per-month  (bigdec 300) :depth 0 :style :header}
+                    {:path "Groceries/Non-food" :budget  (bigdec 150) :value  (bigdec 100) :difference  (bigdec -50) :percent-difference (bigdec -0.333) :actual-per-month  (bigdec 100) :depth 1 :style :data}
+                    {:path "Groceries/Food"     :budget  (bigdec 245) :value  (bigdec 200) :difference  (bigdec -45) :percent-difference (bigdec -0.184) :actual-per-month  (bigdec 200) :depth 1 :style :data}]
+          report (budget-report (d/db conn) "2015" 1)
+          actual (mapv #(select-keys % (-> expected first keys)) report)]
+      (is (= expected actual)))))
 
 (deftest create-a-budget-monitor
   (testing "A budget monitor compares actual spending to projected spending with a progress bar kind of approach"
     (let [conn (populate-db)
-          report (budget-monitor (d/db conn) "Groceries/Food" #inst "2015-01-20")]
-      (is (= report {:budget (bigdec 250)
-                     :expected (bigdec 161)
+          report (budget-monitor (d/db conn) "Groceries/Food" #inst "2015-01-20")
+          expected {:budget (bigdec 245)
+                     :expected (bigdec 158)
                      :expected-percent 20/31
                      :actual (bigdec 200)
-                     :actual-percent (bigdec 0.8)
-                     :projected (bigdec 310)})))))
+                     :actual-percent (bigdec 0.82)
+                     :projected (bigdec 310)}]
+      (is (= expected report)))))
 
 (deftest create-display-records
   (testing "Display records can be created from existing accounts"
