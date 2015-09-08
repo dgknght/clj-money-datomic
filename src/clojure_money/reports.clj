@@ -15,20 +15,43 @@
 ;; Rather, it should compose HOF from accounts and transactions
 ;; to create the reports
 
-(defn sum-by-type
-  "Calculates the sum of root records of the specified type from the specified records"
-  [account-type attribute display-records]
-  (->> display-records
-       (filter #(and (= 0 (:depth %))
-                     (= account-type (:account-type %))))
-       (reduce #(+ %1 (attribute %2)) (bigdec 0))))
+(def root-accounts-only
+  (filter #(= 0 (:depth %))))
+
+(defn accounts-of-type
+  "Returns a transducer that filters the records by account type"
+  [account-type]
+  (filter #(= account-type (:account-type %))))
+
+(defn extract-value
+  "Maps the display-records to a single extracted value"
+  [k]
+  (map #(k %)))
+
+(defn sum-root-accounts-by-type
+  "Returns a transducer for summing display record values with roll up by account type"
+  [account-type field-key]
+  (comp (accounts-of-type account-type)
+        root-accounts-only
+        (extract-value field-key)))
+
+(defn sum-root-accounts
+  "Returns a transducer for summing display record values with roll up"
+  [field-key]
+  (comp root-accounts-only
+        (extract-value field-key)))
+
+(defn sum-accounts
+  "Returns a transducer for summing display record values"
+  [field-key]
+  (extract-value field-key))
 
 (defn append-retained-earnings
   "Takes a sequence of display records and inserts a 'Retained earnings'
   record of type equity based on the income and expense totals"
   [display-records]
-  (let [income (sum-by-type :account.type/income :value display-records)
-        expense (sum-by-type :account.type/expense :value display-records)
+  (let [income (transduce (sum-root-accounts-by-type :account.type/income :value) + display-records)
+        expense (transduce (sum-root-accounts-by-type :account.type/expense :value) + display-records)
         retained-earnings (- income expense)]
     (conj display-records {:caption "Retained earnings"
                            :path "Retained earnings"
@@ -56,17 +79,17 @@
   (let [grouped (group-by :account-type display-records)]
     (reduce (fn [result account-type]
               (let [record-group (->> grouped account-type (sort-by sort-key))
-                    to-sum (if totals-are-rolled-up
-                             (filter #(= 0 (:depth %)) record-group)
-                             record-group)
+                    x-fn (if totals-are-rolled-up
+                           sum-root-accounts
+                           sum-accounts)
                     summary (summary-prep-fn (apply assoc
                                                     {:caption (account-type account-type-caption-map)
                                                      :path (account-type account-type-caption-map) ;TODO Can we eliminate this redundancy?
                                                      :depth 0
                                                      :style :header}
                                                     (mapcat (fn [k]
-                                                           [k (reduce #(+ %1 (k %2)) (bigdec 0) to-sum)])
-                                                         keys-to-sum)))]
+                                                              [k (transduce (x-fn k) + record-group)])
+                                                            keys-to-sum)))]
                 (concat result
                         [summary]
                         record-group)))
