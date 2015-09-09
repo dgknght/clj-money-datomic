@@ -72,11 +72,8 @@
 
 (def income-statement-account-types [:account.type/income
                                      :account.type/expense])
-
-(defn interleave-summaries
-  "Takes a list of display records and interleaves account type summary records"
-  [{:keys [account-types
-           keys-to-sum
+(defn process-record-summary
+  [{:keys [keys-to-sum
            totals-are-rolled-up
            sort-key
            summary-prep-fn]
@@ -84,23 +81,29 @@
          totals-are-rolled-up false
          sort-key :path
          summary-prep-fn identity}}
+   [account-type raw-record-group]]
+  (let [record-group (sort-by sort-key raw-record-group)
+        x-fn (if totals-are-rolled-up
+               sum-root-accounts
+               sum-accounts)
+        summary (summary-prep-fn (apply assoc
+                                        {:caption (account-type account-type-caption-map)
+                                         :path (account-type account-type-caption-map) ;TODO Can we eliminate this redundancy?
+                                         :depth 0
+                                         :style :header}
+                                        (mapcat (fn [k]
+                                                  [k (transduce (x-fn k) + record-group)])
+                                                keys-to-sum)))]
+    (cons summary record-group)))
+
+(defn interleave-summaries
+  "Takes a list of display records and interleaves account type summary records"
+  [{:keys [account-types] :as options}
    display-records]
   (let [grouped (group-by :account-type display-records)]
-    (mapcat (fn [account-type]
-              (let [record-group (->> grouped account-type (sort-by sort-key))
-                    x-fn (if totals-are-rolled-up
-                           sum-root-accounts
-                           sum-accounts)
-                    summary (summary-prep-fn (apply assoc
-                                                    {:caption (account-type account-type-caption-map)
-                                                     :path (account-type account-type-caption-map) ;TODO Can we eliminate this redundancy?
-                                                     :depth 0
-                                                     :style :header}
-                                                    (mapcat (fn [k]
-                                                              [k (transduce (x-fn k) + record-group)])
-                                                            keys-to-sum)))]
-                (cons summary record-group)))
-            account-types)))
+    (->> account-types
+         (map #(vector % (% grouped)))
+         (mapcat #(process-record-summary options %)))))
 
 (defn starts-with
   "Compares two strings to see if string-a starts with string-b"
