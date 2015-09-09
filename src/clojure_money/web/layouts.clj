@@ -39,6 +39,6 @@
          [:ul  {:class "nav navbar-nav"}
           [:li
            [:a  {:href "/accounts"} "Accounts"]]]]]]
-      [:div  {:class "container"} content]
+      [:div.container {:style "margin-top: 2em;"}  content]
       [:script  {:src "https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"}]
       ]]))
