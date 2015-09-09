@@ -172,3 +172,25 @@
                     {:caption "Savings"  :path "Savings"         :depth 0}
                     {:caption "Reserve"  :path "Savings/Reserve" :depth 1}]]
       (is (= expected actual)))))
+
+(deftest get-an-account-list-with-headers
+  (testing "I can get a list of accounts grouped by account type"
+    (let [conn (populate-db)
+          actual (->> (account-list-with-headers (d/db conn))
+                      (mapv #(select-keys % [:caption :style :depth])))
+          expected [{:caption "Assets"           :style :header :depth 0}
+                    {:caption "Checking"         :style :data   :depth 0}
+                    {:caption "Savings"          :style :data   :depth 0}
+                    {:caption "Car"              :style :data   :depth 1}
+                    {:caption "Reserve"          :style :data   :depth 1}
+                    {:caption "Liabilities"      :style :header :depth 0}
+                    {:caption "Credit card"      :style :data   :depth 0}
+                    {:caption "Equity"           :style :header :depth 0}
+                    {:caption "Opening balances" :style :data   :depth 0}
+                    {:caption "Income"           :style :header :depth 0}
+                    {:caption "Salary"           :style :data   :depth 0}
+                    {:caption "Expense"          :style :header :depth 0}
+                    {:caption "Groceries"        :style :data   :depth 0}
+                    {:caption "Food"             :style :data   :depth 1}
+                    {:caption "Non-food"         :style :data   :depth 1}]]
+      (is (= expected actual)))))

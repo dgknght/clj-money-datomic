@@ -72,6 +72,10 @@
 
 (def income-statement-account-types [:account.type/income
                                      :account.type/expense])
+
+(def all-account-types (concat balance-sheet-account-types
+                               income-statement-account-types))
+
 (defn process-record-summary
   [{:keys [keys-to-sum
            totals-are-rolled-up
@@ -163,6 +167,23 @@
        (sort-by :path)
        (map (fn [{path :path :as record}]
               (assoc record :depth (calculate-depth path))))))
+
+(defn interleave-headers
+  "Takes a list of display records and interleaves header records"
+  ([display-records] (interleave-headers {} display-records))
+  ([{account-types :account-types :or {account-types all-account-types}} display-records]
+   (let [grouped (group-by :account-type display-records)]
+     (->> account-types
+          (map #(vector % (% grouped)))
+          (mapcat (fn [[account-type record-group]]
+                    (cons {:caption (account-type account-type-caption-map)
+                           :style :header
+                           :depth 0}
+                          record-group)))))))
+
+(defn account-list-with-headers
+  [db]
+  (interleave-headers (display-records db)))
 
 (defn balance-sheet-report
   "Returns a balance sheet report"
