@@ -90,18 +90,16 @@
                       :path (account-type account-type-caption-map) ;TODO Can we eliminate this redundancy?
                       :depth 0
                       :style :header}
-        totals (->> keys-to-sum
-                    (mapcat #(vector [% (transduce (x-fn %) + record-group)]))
-                    (into {}))
-        summary (-> summary-base
-                     (merge totals)
-                     summary-prep-fn)]
+        summary (->> keys-to-sum
+                    (map #(vector % (transduce (x-fn %) + record-group)))
+                    (into {})
+                    (merge summary-base)
+                    summary-prep-fn)]
     (cons summary record-group)))
 
 (defn interleave-summaries
   "Takes a list of display records and interleaves account type summary records"
-  [{:keys [account-types] :as options}
-   display-records]
+  [{:keys [account-types] :as options} display-records]
   (let [grouped (group-by :account-type display-records)]
     (->> account-types
          (map #(vector % (% grouped)))
