@@ -2,7 +2,7 @@
   (:require [datomic.api :as d :refer [transact q db]]
             [clojure.string :as str]
             [clojure-money.common :as m :refer :all]
-            )
+            [clojure.tools.logging :as log])
   (:gen-class))
 
 (defn all-accounts
@@ -113,6 +113,7 @@
   [db identifier]
   (cond
     (or (isa? clojure.lang.IPersistentMap identifier) (isa? datomic.Entity identifier)) (:db/id identifier)
+    (= java.lang.Long (type identifier)) identifier
     :else (find-account-id-by-path db identifier)))
 
 (defn resolve-account

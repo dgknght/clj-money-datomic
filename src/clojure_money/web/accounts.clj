@@ -70,21 +70,21 @@
 
 (defn form-fields
   ([] (form-fields {}))
-  ([account]
+  ([{account-type :account/type account-name :account/name {parent-id :db/id} :account/parent}]
    [:div ; TODO This div is only here because this function returns a collection and that's what hiccup needs
     (anti-forgery-field)
     [:div.form-group
      [:label {:for "account-type"} "Account Type"]
      [:select.form-control {:id "account-type" :name "account-type" :autofocus 1}
-      (account-type-options (name (:account/type account)))]]
+      (account-type-options (when account-type (name account-type)))]]
     [:div.form-group
      [:label {:for "name"} "Name"]
-     [:input.form-control {:id "name" :name "name" :type "text" :value (:account/name account)}]]
+     [:input.form-control {:id "name" :name "name" :type "text" :value account-name}]]
     [:div.form-group
      [:label {:for "parent-id"} "Parent"]
      [:select.form-control {:id "parent-id" :name "parent-id"}
       [:option {:value ""} "--none--"]
-      (account-options-for-select (:db/id (:account/parent account)))]]]))
+      (account-options-for-select parent-id)]]]))
 
 (defn new-account
   "Renders a form that can be submitted to create a new account"
@@ -115,22 +115,24 @@
         [:a.btn.btn-default {:href "/accounts"} "Cancel"]]])))
 
 (defn account-params
-  [params]
-  (-> params
-      (select-keys [:account-type :parent-id :name])
-      (clojure.set/rename-keys {:name :account/name
-                                :account-type :account/type
-                                :parent-id :account/parent})
-      (update-in [:account/parent] #(Long. %))
-      (update-in [:account/type] #(keyword (str "account.type/" %)))))
+  [{:keys [account-type parent-id name]}]
+  (let [result {:account/name name
+                :account/type (keyword (str "account.type/" account-type))}]
+    (if (empty? parent-id)
+      result
+      (assoc result :account/parent (Long/parseLong parent-id)))))
 
 (defn create-account
   "Creates an account using the supplied parameters, redirecting to the account list on success, or the account form on failure"
   [params]
-  (let [{:keys [name parent-id account-type]} (account-params params)
-        conn (d/connect common/uri)]
-    (accounts/add-account conn name (symbol (str "account.type/" account-type)) parent-id))
-  (redirect "/accounts")) ; TODO Need to handle error messages
+  (try
+    (let [conn (d/connect common/uri)]
+      (accounts/add-account conn (account-params params))
+      (redirect "/accounts"))
+    (catch Exception e
+      (log/error e "Unable to create the new account.")
+      (html [:pre (prn-str params)]
+            [:pre (prn-str e)])))) ; TODO Need a universal way to handle error messages
 
 (defn update-account
   "Updates an existing account"
