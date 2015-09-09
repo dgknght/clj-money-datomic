@@ -2,6 +2,7 @@
   (:require [clojure.tools.logging :as log]
             [clojure.set :refer [rename-keys]]
             [clojure-money.accounts :as accounts]
+            [clojure-money.reports :as reports]
             [clojure-money.common :as common]
             [clojure-money.web.layouts :refer :all]
             [datomic.api :as d]
@@ -20,26 +21,20 @@
       [:span.glyphicon.glyphicon-remove {:aria-hidden true}]]])
 
 (defn account-row
-  [{:keys [caption depth id account-type] :as account}]
+  [{:keys [style caption depth id account-type] :as display-record}]
   [:tr
-   [:td [:div {:class (str "depth-" depth)} caption]]
+   (if (= :header style)
+     [:th caption]
+     [:td [:div {:class (str "depth-" depth)} caption]])
    [:td
     [:div.pull-left
-    [:a.btn.btn-link.btn-sm {:href (str "/accounts/" id "/edit")}
-     [:span.glyphicon.glyphicon-pencil {:aria-hidden true}]]]
+     [:a.btn.btn-link.btn-sm {:href (str "/accounts/" id "/edit")}
+      [:span.glyphicon.glyphicon-pencil {:aria-hidden true}]]]
     (delete-form "accounts" id)]])
 
 (defn account-to-displayable
   [account]
   (rename-keys (into {} account) {:account/name :caption :db/id :id :account/type :account-type}))
-
-(defn presentable-accounts
-  []
-  (let [conn (d/connect common/uri)
-        accounts (accounts/stacked-accounts (d/db conn))]
-    (->> accounts
-        accounts/flatten-accounts
-        (map account-to-displayable))))
 
 (defn index-accounts []
   (main-layout
@@ -47,10 +42,8 @@
     [:div.page-header
      [:h1 "Accounts"]]
     [:table.table.table-striped
-     [:tr
-      [:th "Name"]
-      [:td "&nbsp;"]]
-     (let [list (presentable-accounts)]
+     (let [conn (d/connect common/uri)
+           list (reports/account-list-with-headers (d/db conn))]
        (map account-row list))]
     [:a.btn.btn-default {:href "accounts/new"} "New"]))
 
