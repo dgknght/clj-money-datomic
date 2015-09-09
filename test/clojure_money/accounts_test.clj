@@ -220,7 +220,7 @@
 (deftest delete-an-account
   (testing "I can delete an account"
     (let [conn (create-empty-db)
-          _ (add-account conn "Checking" :account.type/asset)
+          _ (add-account conn "Checking")
           after-add (find-account-by-path (d/db conn) "Checking")
           _ (delete-account conn (:db/id after-add))
           after-delete (find-account-by-path (d/db conn) "Checking")]
@@ -230,7 +230,7 @@
 (deftest update-an-account
   (testing "When I update and account, the account should assume the new values")
   (let [conn (create-empty-db)
-        _ (add-account conn "wrong-name" :account.type/asset)
+        _ (add-account conn "wrong-name")
         id (find-account-id-by-path (d/db conn) "wrong-name")
         _ (update-account conn id {:account/name "right-name"
                                    :account/type :account.type/liability})
