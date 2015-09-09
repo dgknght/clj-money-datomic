@@ -86,14 +86,16 @@
         x-fn (if totals-are-rolled-up
                sum-root-accounts
                sum-accounts)
-        summary (summary-prep-fn (apply assoc
-                                        {:caption (account-type account-type-caption-map)
-                                         :path (account-type account-type-caption-map) ;TODO Can we eliminate this redundancy?
-                                         :depth 0
-                                         :style :header}
-                                        (mapcat (fn [k]
-                                                  [k (transduce (x-fn k) + record-group)])
-                                                keys-to-sum)))]
+        summary-base {:caption (account-type account-type-caption-map)
+                      :path (account-type account-type-caption-map) ;TODO Can we eliminate this redundancy?
+                      :depth 0
+                      :style :header}
+        totals (->> keys-to-sum
+                    (mapcat #(vector [% (transduce (x-fn %) + record-group)]))
+                    (into {}))
+        summary (-> summary-base
+                     (merge totals)
+                     summary-prep-fn)]
     (cons summary record-group)))
 
 (defn interleave-summaries
