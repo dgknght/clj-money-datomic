@@ -56,11 +56,20 @@
 
 (defn account-options-for-select
   "Returns the HTML options for the available accounts"
-  [selected-id]
+  [selected-id {:keys [except]}]
   (let [conn (d/connect common/uri)]
-    (map (fn [{id :db/id account-name :account/name}]
-           (select-option account-name id (= selected-id id)))
-         (accounts/all-accounts (d/db conn)))))
+    (->> (reports/display-records (d/db conn))
+         (remove #(except (-> % :account :db/id)))
+         (group-by :account-type)
+         (reduce (fn [output [account-type display-records]]
+                   (let [result (-> [:optgroup {:label (account-type reports/account-type-caption-map)}]
+                                    (concat (mapv (fn [{{id :db/id} :account path :path}]
+                                                    (select-option path id (= selected-id id)))
+                                                  display-records))
+                                    vec)]
+                     (clojure.pprint/pprint result)
+                     (concat output [result])))
+                 []))))
 
 (defn account-type-options
   [selected-type]
@@ -70,7 +79,7 @@
 
 (defn form-fields
   ([] (form-fields {}))
-  ([{account-type :account/type account-name :account/name {parent-id :db/id} :account/parent}]
+  ([{id :db/id account-type :account/type account-name :account/name {parent-id :db/id} :account/parent}]
    [:div ; TODO This div is only here because this function returns a collection and that's what hiccup needs
     (anti-forgery-field)
     [:div.form-group
@@ -84,7 +93,7 @@
      [:label {:for "parent-id"} "Parent"]
      [:select.form-control {:id "parent-id" :name "parent-id"}
       [:option {:value ""} "--none--"]
-      (account-options-for-select parent-id)]]]))
+      (account-options-for-select parent-id {:except #{id}})]]]))
 
 (defn new-account
   "Renders a form that can be submitted to create a new account"
