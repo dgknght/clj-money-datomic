@@ -21,7 +21,7 @@
       [:span.glyphicon.glyphicon-remove {:aria-hidden true}]]])
 
 (defn account-row
-  [{:keys [style caption depth id account-type] :as display-record}]
+  [{:keys [style caption depth account-type] {id :db/id} :account :as display-record}]
   [:tr
    (if (= :header style)
      [:th caption]
