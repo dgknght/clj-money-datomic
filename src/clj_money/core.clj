@@ -5,16 +5,21 @@
             [compojure.route :as route]
             [hiccup.core :refer :all]
             [clj-money.web.accounts :as accounts]
+            [clj-money.web.transactions :as transactions]
             [clj-money.web.pages :as pages]))
 
 (defroutes app-routes
   (GET "/" [] (pages/home))
+
   (GET "/accounts" [] (accounts/index-accounts))
   (POST "/accounts" [:as {params :params}] (accounts/create-account params))
   (GET "/accounts/new" [] (accounts/new-account))
   (GET "/accounts/:id/edit" [id] (accounts/edit-account id))
   (POST "/accounts/:id" [id :as {params :params}] (accounts/update-account id params))
   (POST "/accounts/:id/delete" [id] (accounts/delete-account id))
+
+  (GET "/transactions" [] (transactions/index-transactions))
+
   (route/not-found (html [:h1 "Resource not found"])))
 
 (def app (wrap-defaults app-routes site-defaults))

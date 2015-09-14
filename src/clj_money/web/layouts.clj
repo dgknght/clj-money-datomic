@@ -2,6 +2,24 @@
   (:require [hiccup.core :refer :all]
             [hiccup.page :refer :all]))
 
+(defn navigation
+  []
+  [:nav  {:class "navbar navbar-inverse navbar-fixed-top"}
+   [:div  {:class "container"}
+    [:div  {:class "navbar-header"}
+     [:button  {:type "button", :class "navbar-toggle collapsed", :data-toggle "collapse", :data-target "#navbar", :aria-expanded "false", :aria-controls "navbar"}
+      [:span  {:class "sr-only"} "Toggle navigation"]
+      [:span  {:class "icon-bar"}]
+      [:span  {:class "icon-bar"}]
+      [:span  {:class "icon-bar"}]]
+     [:a  {:class "navbar-brand", :href "/"} "clj-money"]]
+    [:div  {:id "navbar", :class "collapse navbar-collapse"}
+     [:ul  {:class "nav navbar-nav"}
+      [:li
+       [:a {:href "/accounts"} "Accounts"]]
+      [:li
+       [:a {:href "/transactions"} "Transactions"]]]]]])
+
 (defn main-layout
   [title & content]
   (html5
@@ -26,19 +44,7 @@
       [:link {:rel "stylesheet" :href "clj-money.css"}]
       [:script  {:src "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"}]]
      [:body
-      [:nav  {:class "navbar navbar-inverse navbar-fixed-top"}
-       [:div  {:class "container"}
-        [:div  {:class "navbar-header"}
-         [:button  {:type "button", :class "navbar-toggle collapsed", :data-toggle "collapse", :data-target "#navbar", :aria-expanded "false", :aria-controls "navbar"}
-          [:span  {:class "sr-only"} "Toggle navigation"]
-          [:span  {:class "icon-bar"}]
-          [:span  {:class "icon-bar"}]
-          [:span  {:class "icon-bar"}]]
-         [:a  {:class "navbar-brand", :href "/"} "clj-money"]]
-        [:div  {:id "navbar", :class "collapse navbar-collapse"}
-         [:ul  {:class "nav navbar-nav"}
-          [:li
-           [:a  {:href "/accounts"} "Accounts"]]]]]]
+      (navigation)
       [:div.container {:style "margin-top: 2em;"}  content]
       [:script  {:src "https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"}]
       ]]))
