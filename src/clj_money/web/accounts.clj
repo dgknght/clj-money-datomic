@@ -67,7 +67,6 @@
                                                     (select-option path id (= selected-id id)))
                                                   display-records))
                                     vec)]
-                     (clojure.pprint/pprint result)
                      (concat output [result])))
                  []))))
 
