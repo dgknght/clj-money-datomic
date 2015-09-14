@@ -1,4 +1,15 @@
-(ns clj-money.util)
+(ns clj-money.util
+  (:require [clojure.pprint :refer :all]
+            [clj-time.format :as f]
+            [clojure.tools.logging :as log]))
+
+(defn parse-date
+  [value]
+  (f/parse (:date f/formatters) value))
+
+(defn parse-date-time
+  [value]
+  (f/parse (:date-time f/formatters) value))
 
 (defn println-and-return
   "Prints the specified information and then returns it"
@@ -10,3 +21,9 @@
        (println (str "  " (transform-fn p))))
      (println (str "  " (transform-fn to-print))))
    (println (str "*** end - " caption " ***"))))
+
+(defn pp-str
+  [data]
+  (let [w (java.io.StringWriter.)]
+    (pprint data w)
+    (.toString w)))
