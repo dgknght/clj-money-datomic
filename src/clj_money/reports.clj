@@ -1,9 +1,9 @@
-(ns clojure-money.reports
-  (:use clojure-money.common
-        clojure-money.accounts
-        clojure-money.budgets
-        clojure-money.transactions
-        clojure-money.util
+(ns clj-money.reports
+  (:use clj-money.common
+        clj-money.accounts
+        clj-money.budgets
+        clj-money.transactions
+        clj-money.util
         clojure.set)
   (:require [clojure.string :as string]
             [clojure.pprint :refer [pprint]]

@@ -152,20 +152,20 @@
  {:db/id #db/id[:db.part/user]
   :db/doc "Function indicating whether an account type is left-side"
   :db/ident :left-side?
-  :db/fn clojure-money.common/left-side?}
+  :db/fn clj-money.common/left-side?}
 
  {:db/id #db/id[:db.part/user]
   :db/doc "Function indicating whether an account type is right-side"
   :db/ident :right-side?
-  :db/fn clojure-money.common/right-side?}
+  :db/fn clj-money.common/right-side?}
 
  {:db/id #db/id[:db.part/user]
   :db/doc "Returns 1 or -1 to be applied to an amount used to update an account balance based on a credit or debut"
   :db/ident :polarizer
-  :db/fn clojure-money.common/polarizer}
+  :db/fn clj-money.common/polarizer}
 
  {:db/id #db/id[:db.part/user]
   :db/doc "adjusts an account balance"
   :db/ident :adjust-balance
-  :db/fn clojure-money.common/adjust-balance}
+  :db/fn clj-money.common/adjust-balance}
  ]

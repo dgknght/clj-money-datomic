@@ -1,7 +1,7 @@
-(ns clojure-money.accounts
+(ns clj-money.accounts
   (:require [datomic.api :as d :refer [transact q db]]
             [clojure.string :as str]
-            [clojure-money.common :as m :refer :all]
+            [clj-money.common :as m :refer :all]
             [clojure.tools.logging :as log])
   (:gen-class))
 

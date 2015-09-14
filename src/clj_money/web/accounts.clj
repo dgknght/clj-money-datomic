@@ -1,10 +1,10 @@
-(ns clojure-money.web.accounts
+(ns clj-money.web.accounts
   (:require [clojure.tools.logging :as log]
             [clojure.set :refer [rename-keys]]
-            [clojure-money.accounts :as accounts]
-            [clojure-money.reports :as reports]
-            [clojure-money.common :as common]
-            [clojure-money.web.layouts :refer :all]
+            [clj-money.accounts :as accounts]
+            [clj-money.reports :as reports]
+            [clj-money.common :as common]
+            [clj-money.web.layouts :refer :all]
             [datomic.api :as d]
             [ring.util.anti-forgery :refer :all]
             [ring.util.response :refer [redirect]]

@@ -1,4 +1,4 @@
-(ns clojure-money.util)
+(ns clj-money.util)
 
 (defn println-and-return
   "Prints the specified information and then returns it"

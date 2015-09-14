@@ -1,7 +1,7 @@
-(ns clojure-money.transactions
+(ns clj-money.transactions
   (:require [datomic.api :as d :refer [tempid q db transact pull-many]])
-  (:use clojure-money.common
-        clojure-money.accounts)
+  (:use clj-money.common
+        clj-money.accounts)
   (:gen-class))
 
 ;; ----- Primary methods -----

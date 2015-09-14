@@ -1,4 +1,4 @@
-(ns clojure-money.web.layouts
+(ns clj-money.web.layouts
   (:require [hiccup.core :refer :all]
             [hiccup.page :refer :all]))
 

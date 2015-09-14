@@ -1,10 +1,10 @@
-(ns clojure-money.accounts-test
+(ns clj-money.accounts-test
   (:require [datomic.api :as d :refer [db]]
             [clojure.test :refer :all]
             [clojure.tools.logging :as log]
-            [clojure-money.accounts :refer :all]
-            [clojure-money.common :refer :all])
-  (:use clojure-money.test-common))
+            [clj-money.accounts :refer :all]
+            [clj-money.common :refer :all])
+  (:use clj-money.test-common))
 
 (deftest save-an-account
   (testing "After I save an account, it appears in the list of all accounts"

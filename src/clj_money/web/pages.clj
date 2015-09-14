@@ -1,7 +1,7 @@
-(ns clojure-money.web.pages
+(ns clj-money.web.pages
   (:require [hiccup.core :refer :all]
             [hiccup.page :refer :all]
-            [clojure-money.web.layouts :refer :all]))
+            [clj-money.web.layouts :refer :all]))
 
 (defn home
   "Returns the home page"

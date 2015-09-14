@@ -1,9 +1,9 @@
-(ns clojure-money.transactions-test
+(ns clj-money.transactions-test
   (:require [clojure.test :refer :all]
             [datomic.api :as d :refer [db]])
-  (:use clojure-money.test-common
-        clojure-money.accounts
-        clojure-money.transactions))
+  (:use clj-money.test-common
+        clj-money.accounts
+        clj-money.transactions))
 
 (def account-defs [{:account/name "Checking"
                     :account/type :account.type/asset}

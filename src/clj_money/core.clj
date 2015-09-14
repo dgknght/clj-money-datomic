@@ -1,11 +1,11 @@
-(ns clojure-money.core
+(ns clj-money.core
   (:require [ring.adapter.jetty :as jetty]
             [ring.middleware.defaults :refer :all]
             [compojure.core :refer :all]
             [compojure.route :as route]
             [hiccup.core :refer :all]
-            [clojure-money.web.accounts :as accounts]
-            [clojure-money.web.pages :as pages]))
+            [clj-money.web.accounts :as accounts]
+            [clj-money.web.pages :as pages]))
 
 (defroutes app-routes
   (GET "/" [] (pages/home))

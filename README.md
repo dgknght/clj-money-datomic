@@ -1,4 +1,4 @@
-# clojure-money
+# clj-money
 
 FIXME: description
 
@@ -10,7 +10,7 @@ Download from http://example.com/FIXME.
 
 FIXME: explanation
 
-    $ java -jar clojure-money-0.1.0-standalone.jar [args]
+    $ java -jar clj-money-0.1.0-standalone.jar [args]
 
 ## Options
 

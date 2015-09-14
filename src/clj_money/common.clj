@@ -1,4 +1,4 @@
-(ns clojure-money.common
+(ns clj-money.common
   (:require [datomic.api :as d :refer [q]])
   (:gen-class))
 
@@ -23,13 +23,13 @@
 (def right-side?
   (d/function '{:lang :clojure
                 :params [account]
-                :code (not (clojure-money.common/left-side? account))}))
+                :code (not (clj-money.common/left-side? account))}))
 
 (def polarizer
   (d/function '{:lang :clojure
                 :params [account action]
-                :code (if (or (and (clojure-money.common/left-side? account) (= :transaction-item.action/debit action))
-                              (and (clojure-money.common/right-side? account) (= :transaction-item.action/credit action)))
+                :code (if (or (and (clj-money.common/left-side? account) (= :transaction-item.action/debit action))
+                              (and (clj-money.common/right-side? account) (= :transaction-item.action/credit action)))
                         1
                         -1)}))
 
@@ -38,7 +38,7 @@
                 :params [db id amount action]
                 :code (let [e (d/entity db id)
                             account (d/touch e)
-                            pol (clojure-money.common/polarizer account action)
+                            pol (clj-money.common/polarizer account action)
                             current-balance (:account/balance account)
                             polarized-amount (* pol amount)
                             new-balance (+ current-balance polarized-amount)]

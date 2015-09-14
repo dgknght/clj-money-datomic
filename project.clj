@@ -1,4 +1,4 @@
-(defproject clojure-money "0.1.0-SNAPSHOT"
+(defproject clj-money "0.1.0-SNAPSHOT"
   :description "Application implementing double-entry accounting"
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"
@@ -17,7 +17,7 @@
                  [ring/ring-defaults "0.1.5"]
                  [compojure "1.4.0"]
                  [hiccup "1.0.5"]]
-  :main ^:skip-aot clojure-money.core
+  :main ^:skip-aot clj-money.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}}
   :plugins [[lein-expectations "0.0.7"]])

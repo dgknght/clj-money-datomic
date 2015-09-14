@@ -1,6 +1,6 @@
-(ns clojure-money.test-common
+(ns clj-money.test-common
   (:require [datomic.api :as d :refer [delete-database create-database transact]])
-  (:use clojure-money.common))
+  (:use clj-money.common))
 
 (def test-uri "datomic:mem://money")
 

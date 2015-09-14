@@ -1,10 +1,10 @@
-(ns clojure-money.budgets-test
+(ns clj-money.budgets-test
   (:require [clojure.test :refer :all]
             [datomic.api :as d :refer [db touch]]
-            [clojure-money.budgets :refer :all]
-            [clojure-money.accounts :refer :all]
-            [clojure-money.common :refer :all])
-  (:use clojure-money.test-common))
+            [clj-money.budgets :refer :all]
+            [clj-money.accounts :refer :all]
+            [clj-money.common :refer :all])
+  (:use clj-money.test-common))
 
 (defn prepare-db
   "Prepares the database for budget tests"

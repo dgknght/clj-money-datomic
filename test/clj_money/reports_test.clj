@@ -1,13 +1,13 @@
-(ns clojure-money.reports-test
+(ns clj-money.reports-test
   (:require [clojure.test :refer :all]
             [clojure.pprint :refer [pprint]]
             [clojure.data :refer [diff]]
             [datomic.api :as d :refer [db]])
-  (:use clojure-money.test-common
-        clojure-money.accounts
-        clojure-money.budgets
-        clojure-money.transactions
-        clojure-money.reports))
+  (:use clj-money.test-common
+        clj-money.accounts
+        clj-money.budgets
+        clj-money.transactions
+        clj-money.reports))
 
 (defn populate-db
   "Creates and populates a database"

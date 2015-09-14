@@ -1,7 +1,7 @@
-(ns clojure-money.budgets
+(ns clj-money.budgets
   (:require [datomic.api :as d :refer [transact q db]]
-            [clojure-money.common :as m :refer :all]
-            [clojure-money.accounts :refer :all]
+            [clj-money.common :as m :refer :all]
+            [clj-money.accounts :refer :all]
             [clj-time.core :as t]
             [clj-time.coerce :as c])
   (:gen-class))
