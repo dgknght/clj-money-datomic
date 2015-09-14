@@ -1,5 +1,6 @@
 (ns clj-money.common
-  (:require [datomic.api :as d :refer [q]])
+  (:require [clojure.tools.logging :as log]
+            [datomic.api :as d :refer [q]])
   (:gen-class))
 
 (def earliest-date #inst "1900-01-01")
@@ -52,10 +53,12 @@
 
 (defn init-database
   []
+  (log/info "creating the database at " uri "...")
   (d/create-database uri)
+  (log/info "created database at " uri)
   (let [c (d/connect uri)]
     (d/transact c schema)
-    (println "created the schema")))
+    (log/info "created the schema in database at " uri)))
 
 (defn entity-map->hash-map
   "Accepts an EntityMap and returns a run-of-the-mill hash map"
