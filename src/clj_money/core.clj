@@ -19,6 +19,8 @@
   (POST "/accounts/:id/delete" [id] (accounts/delete-account id))
 
   (GET "/transactions" [] (transactions/index-transactions))
+  (GET "/transactions/new" [] (transactions/new-transaction))
+  (POST "/transactions" [:as {:keys [params]}] (transactions/create-transaction params))
 
   (route/not-found (html [:h1 "Resource not found"])))
 
