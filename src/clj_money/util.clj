@@ -1,11 +1,14 @@
 (ns clj-money.util
   (:require [clojure.pprint :refer :all]
             [clj-time.format :as f]
+            [clj-time.coerce :as c]
             [clojure.tools.logging :as log]))
 
 (defn parse-date
   [value]
-  (f/parse (:date f/formatters) value))
+  (->> value
+       (f/parse (:date f/formatters))
+       (c/to-date)))
 
 (defn parse-date-time
   [value]
