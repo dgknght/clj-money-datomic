@@ -5,6 +5,27 @@
             [clojure.tools.logging :as log])
   (:gen-class))
 
+(defn left-side?
+  "Returns true if the account is on the left side of the A = L + E equation. I.e., if it's an asset or an expense."
+  [account]
+  (contains?
+    #{:account.type/asset :account.type/expense}
+    (:account/type account)))
+
+(defn right-side?
+  "Returns true if the account is on the right side of the A = L + E equation. I.e., if it's a liability, equity, or income account."
+  [account]
+  (not (left-side? account)))
+
+(defn polarizer
+  "Returns a number by which a transaction amount can be multiplied to make the correct
+  adjustment on the balance of the account to which it belongs."
+  [account action]
+  (if (or (and (left-side? account) (= :transaction-item.action/debit action))
+          (and (right-side? account) (= :transaction-item.action/credit action)))
+    1
+    -1))
+
 (defn all-accounts
   "Returns all of the accounts in the system"
   [db]
@@ -123,15 +144,26 @@
         (integer? token) (d/entity db token)
         :else token))
 
+(defn adjust-balance
+  "Adjusts the balance of the account based on the specified action on the specifie amount."
+  [conn account-token amount action]
+  (let [account (resolve-account (d/db conn) account-token)
+        pol (polarizer account action)
+        current-balance (:account/balance account)
+        polarized-amount (* pol amount)
+        new-balance (+ current-balance polarized-amount)
+        tx-data [[:db/add (:db/id account) :account/balance new-balance]]]
+    @(d/transact conn tx-data)))
+
 (defn debit-account
   "Debits the specified account"
   [conn id amount]
-  @(d/transact conn [[:adjust-balance id amount :transaction-item.action/debit]]))
+  (adjust-balance conn id amount :transaction-item.action/debit))
 
 (defn credit-account
   "Debits the specified account"
   [conn id amount]
-  @(d/transact conn [[:adjust-balance id amount :transaction-item.action/credit]]))
+  (adjust-balance conn id amount :transaction-item.action/credit))
 
 (defn get-balance
   "Gets the balance for the specified account"

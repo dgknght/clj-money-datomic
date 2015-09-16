@@ -29,7 +29,13 @@
 
 (declare resolve-transaction-data)
 (declare validate-transaction-data)
-(declare create-balance-adjustment-tx-data)
+
+(defn adjust-account-balances
+  "Adds tx-data for adjusting account balances for a transaction"
+  [conn items]
+  (doseq [{account :transaction-item/account action :transaction-item/action amount :transaction-item/amount} items]
+         (adjust-balance conn account amount action)))
+
 (defn add-transaction
   "Adds a new transaction to the system"
   [conn data]
@@ -38,12 +44,10 @@
         new-id (d/tempid :db.part/user)
         complete-data (->> data
                            (resolve-transaction-data db)
-                           (merge {:db/id new-id}))
-        all-tx-data (concat
-                      [complete-data]
-                      (create-balance-adjustment-tx-data (:transaction/items complete-data)))]
-    (let [result @(d/transact conn all-tx-data)
+                           (merge {:db/id new-id}))]
+    (let [result @(d/transact conn [complete-data])
           tempids (:tempids result)]
+      (adjust-account-balances conn (:transaction/items complete-data))
       (d/resolve-tempid (d/db conn) tempids new-id))))
 
 (defn add-simple-transaction
@@ -63,16 +67,6 @@
   "Returns a transaction, given a transaction id"
   [db id]
   (d/touch (d/entity db id)))
-
-;; ----- Helper methods -----
-
-(defn create-balance-adjustment-tx-data
-  "Adds tx-data for adjusting account balances for a transaction"
-  [items]
-  (map
-    (fn [{account :transaction-item/account action :transaction-item/action amount :transaction-item/amount}]
-      [:adjust-balance account amount action])
-    items))
 
 (defn resolve-transaction-item-data
   "Resolves references inside transaction item data"
