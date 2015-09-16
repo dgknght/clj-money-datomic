@@ -15,10 +15,15 @@
             [clj-time.coerce :as c]))
 
 (defn transaction-row
-  [{transaction-date :transaction/transaction-date description :transacdtion/description :as transaction}]
+  [{transaction-date :transaction/date description :transaction/description items :transaction/items :as transaction}]
+  (let [amount (->> items
+                    (filter #(= :transaction-item.action/credit (:transaction-item/action %)))
+                    (map :transaction-item/amount)
+                    (reduce #(+ %1 %2) 0))]
   [:tr
-   [:td transaction-date]
-   [:td description]])
+   [:td (util/format-date transaction-date)]
+   [:td description]
+   [:td (util/format-number amount)]]))
 
 (defn index-transactions
   []
@@ -32,8 +37,8 @@
       [:th "Description"]
       [:th "Amount"]]
      (let [conn (d/connect common/uri)]
-      (->> (transactions/get-transactions (d/db conn) (-> 7 t/days t/ago))
-          (map transaction-row)))]
+       (->> (transactions/get-transactions (d/db conn))
+            (map transaction-row)))]
     [:a.btn.btn-default {:href "/transactions/new"} "New"]))
 
 (defn transaction-item-row

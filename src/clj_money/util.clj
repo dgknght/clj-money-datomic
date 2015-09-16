@@ -4,15 +4,23 @@
             [clj-time.coerce :as c]
             [clojure.tools.logging :as log]))
 
-(defn parse-date
+(defn format-date
   [value]
-  (->> value
+  (f/unparse (:date f/formatters) (c/from-date value))) 
+
+(defn parse-date
+  [value] (->> value
        (f/parse (:date f/formatters))
        (c/to-date)))
 
 (defn parse-date-time
   [value]
   (f/parse (:date-time f/formatters) value))
+
+(defn format-number
+  [value]
+  (-> (java.text.DecimalFormat. "#,##0.00")
+      (.format value)))
 
 (defn println-and-return
   "Prints the specified information and then returns it"

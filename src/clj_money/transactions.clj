@@ -1,5 +1,6 @@
 (ns clj-money.transactions
   (:require [datomic.api :as d :refer [tempid q db transact pull-many]]
+            [clojure.tools.logging :as log]
             [clj-time.core :as t])
   (:use clj-money.common
         clj-money.accounts)
@@ -7,22 +8,16 @@
 
 ;; ----- Primary methods -----
 
-(def max-date (t/date-time 9999 12 31 23 59 59 999))
+(def max-date (t/date-time 9999 12 31))
 
 (declare resolve-transactions-enums)
 (defn get-transactions
-  "Returns the transactions in the specified timeframe"
-  ([db since] (get-transactions db since max-date))
-  ([db start-date end-date]
+  "Returns all transactions"
+  ([db]
    (->> (d/q
           '[:find ?t
-            :in $ ?start-date ?end-date
-            :where [?t :transaction/date ?transaction-date]
-            [(> ?transaction-date ?start-date)]
-            [(< ?transaction-date ?end-date)]]
-          db
-          start-date
-          end-date)
+            :where [?t :transaction/date _]]
+          db)
         (map first)
         (pull-many db '[*])
         (resolve-transactions-enums db))))
