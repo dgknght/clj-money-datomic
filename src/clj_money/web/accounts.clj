@@ -42,15 +42,6 @@
             [:div.btn-group
              [:a.btn.btn-default {:href "/accounts"} "Back"]]))))
 
-(defn delete-form
-  [model-type id]
-  [:form.form-inline {:action (str "/" model-type "/" id "/delete")
-                        :method "POST"
-                        :style "margin: 0; padding: 0;"}
-     (anti-forgery-field)
-     [:button.btn.btn-sm.btn-link {:type "submit" :title "Click here to delete the account."}
-      [:span.glyphicon.glyphicon-remove {:aria-hidden true}]]])
-
 (defn account-row
   [{:keys [style caption depth account-type] {id :db/id balance :account/balance} :account :as display-record}]
   [:tr

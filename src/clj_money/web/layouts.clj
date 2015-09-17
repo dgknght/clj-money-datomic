@@ -1,5 +1,6 @@
 (ns clj-money.web.layouts
-  (:require [hiccup.core :refer :all]
+  (:require [ring.util.anti-forgery :refer :all]
+            [hiccup.core :refer :all]
             [hiccup.page :refer :all]))
 
 (defn navigation
@@ -48,3 +49,12 @@
       [:div.container {:style "margin-top: 2em;"}  content]
       [:script  {:src "https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"}]
       ]]))
+
+(defn delete-form
+  [model-type id]
+  [:form.form-inline {:action (str "/" model-type "/" id "/delete")
+                        :method "POST"
+                        :style "margin: 0; padding: 0;"}
+     (anti-forgery-field)
+     [:button.btn.btn-sm.btn-link {:type "submit" :title (str "Click here to delete the " model-type ".")}
+      [:span.glyphicon.glyphicon-remove {:aria-hidden true}]]])

@@ -23,6 +23,8 @@
   (GET "/transactions/new" [] (transactions/new-transaction))
   (POST "/transactions" [:as {:keys [params]}] (transactions/create-transaction params))
   (GET "/transactions/:id" [id] (transactions/show-transaction id))
+  (GET "/transactions/:id/edit" [id] (transactions/edit-transaction id))
+  (POST "/transactions/:id" [id :as {params :params}] (transactions/update-transaction id params))
 
   (route/not-found (html [:h1 "Resource not found"])))
 

@@ -14,6 +14,79 @@
             [clj-time.core :as t]
             [clj-time.coerce :as c]))
 
+(defn update-transaction
+  [id params]
+  (main-layout
+    "Update Transactions"
+    [:div.page-header
+     [:h1 "Update Transaction"]]
+    [:pre (util/pp-str params)]))
+
+(defn transaction-item-form-row
+  [index {amount :transaction-item/amount
+          action :transaction-item/action
+          account :transaction-item/account
+          :as item}]
+  (let [credit-amount (if (= :transaction-item.action/credit action) amount nil)
+        debit-amount (if (= :transaction-item.action/debit action) amount nil)
+        account-field (str "transaction-item-account-" index)
+        account-name (if account (-> account d/touch :account/name) nil)
+        debit-amount-name (str "transaction-item-debit-" index)
+        credit-amount-name (str "transaction-item-credit-" index)]
+    [:tr
+     [:td
+      [:input.form-control {:type "text"
+                            :name account-field
+                            :id account-field
+                            :value account-name}]] ; TODO Need to get the full path
+     [:td
+      [:input.form-control {:type "number"
+                            :step 0.01
+                            :name debit-amount-name
+                            :id debit-amount-name
+                            :value debit-amount}]]
+     [:td
+      [:input.form-control {:type "number"
+                            :step 0.01
+                            :name credit-amount-name
+                            :id credit-amount-name
+                            :value credit-amount}]]]))
+
+(defn form-fields
+  ([] (form-fields {}))
+  ([transaction]
+   (html
+     (anti-forgery-field)
+     [:div.row
+      [:div.col-md-6
+       [:div.form-group
+        [:label {:for "transaction-date"} "Transaction Date"]
+        [:input.form-control.date-field {:type "text" :name "transaction-date" :id "transaction-date" :value (util/format-date (:transaction/date transaction)) :autofocus true}]]
+       [:div.form-group
+        [:label {:for "description"} "Description"]
+        [:input.form-control {:type "text" :name "description" :id "description" :value (:transaction/description transaction)}]]]]
+     [:table.table.table-striped
+      [:tr
+       [:th.col-md-6 "Account"]
+       [:th.col-md-3 "Debit"]
+       [:th.col-md-3 "Credit"]]
+      (map-indexed transaction-item-form-row (take 10 (concat (:transaction/items transaction)
+                                                              (repeat {}))))]
+     [:div.btn-group
+      [:input.btn.btn-primary {:type "submit" :value "Save" :title "Click here to save the transaction."}]
+      [:a.btn.btn-default {:href "/transactions" :title "Click here to return to the list of transactions."} "Cancel"]])))
+
+(defn edit-transaction
+  [id]
+  (main-layout
+    "Edit Transaction"
+    [:div.page-header
+     [:h1 "Edit Transaction"]]
+    (let [conn (d/connect common/uri)
+          transaction (transactions/get-transaction (d/db conn) (java.lang.Long/parseLong id))]
+      [:form {:action (str "/transactions/" id) :method "POST"}
+       (form-fields transaction)])))
+
 (defn transaction-item-row
   [{account :transaction-item/account action :transaction-item/action amount :transaction-item/amount}]
   [:tr
@@ -61,7 +134,12 @@
   [:tr
    [:td (util/format-date transaction-date)]
    [:td description]
-   [:td [:a {:href (str "/transactions/" id)} (util/format-number amount)]]]))
+   [:td.text-right [:a {:href (str "/transactions/" id)} (util/format-number amount)]]
+   [:td
+    [:div.pull-left
+     [:a.btn.btn-link.btn-sm {:href (str "/transactions/" id "/edit") :title "Click here to edit this transaction."}
+      [:span.glyphicon.glyphicon-pencil {:area-hidden true}]]]
+    (delete-form "transactions" id)]]))
 
 (defn index-transactions
   []
@@ -71,43 +149,14 @@
      [:h1 "Transactions"]]
     [:table.table.table-striped
      [:tr
-      [:th "Date"]
-      [:th "Description"]
-      [:th "Amount"]]
+      [:th.col-md-1 "Date"]
+      [:th.col-md-9 "Description"]
+      [:th.col-md-1.text-right "Amount"]
+      [:td.col-md-1 "&nbsp;"]]
      (let [conn (d/connect common/uri)]
        (->> (transactions/get-transactions (d/db conn))
             (map transaction-row)))]
     [:a.btn.btn-default {:href "/transactions/new"} "New"]))
-
-(defn transaction-item-form-row
-  [index]
-  [:tr
-   [:td
-    [:input.form-control {:type "text" :name (str "transaction-item-account-" index) :id (str "transaction-item-account-" index)}]]
-   [:td
-    [:input.form-control {:type "number" :step 0.01 :name (str "transaction-item-debit-" index) :id (str "transaction-item-debit-" index)}]]
-   [:td
-    [:input.form-control {:type "number" :step 0.01 :name (str "transaction-item-credit-" index) :id (str "transaction-item-credit-" index)}]]])
-
-(defn form-fields
-  []
-  (html
-    (anti-forgery-field)
-    [:div.form-group
-     [:label {:for "transaction-date"} "Transaction Date"]
-     [:input.form-control.date-field {:type "text" :name "transaction-date" :id "transaction-date" :autofocus true}]]
-    [:div.form-group
-     [:label {:for "description"} "Description"]
-     [:input.form-control {:type "text" :name "description" :id "description"}]]
-    [:table.table.table-striped
-     [:tr
-      [:th.col-md-6 "Account"]
-      [:th.col-md-3 "Debit"]
-      [:th.col-md-3 "Credit"]]
-     (map transaction-item-form-row (range 9))]
-    [:div.btn-group
-     [:input.btn.btn-primary {:type "submit" :value "Save"}]
-     [:a.btn.btn-default {:href "/transactions"} "Cancel"]]))
 
 (defn new-transaction
   []
