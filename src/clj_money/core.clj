@@ -26,7 +26,7 @@
 
 (def app (wrap-defaults app-routes site-defaults))
 
-(defonce server (jetty/run-jetty #'app {:port 3000 :join? false}))
+(defonce server (jetty/run-jetty #'app {:port 3204 :join? false}))
 
 (defn -main
   "main entry point for the application"
