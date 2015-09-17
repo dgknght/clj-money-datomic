@@ -21,6 +21,7 @@
   (GET "/transactions" [] (transactions/index-transactions))
   (GET "/transactions/new" [] (transactions/new-transaction))
   (POST "/transactions" [:as {:keys [params]}] (transactions/create-transaction params))
+  (GET "/transactions/:id" [id] (transactions/show-transaction id))
 
   (route/not-found (html [:h1 "Resource not found"])))
 

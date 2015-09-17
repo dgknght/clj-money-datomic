@@ -14,8 +14,46 @@
             [clj-time.core :as t]
             [clj-time.coerce :as c]))
 
+(defn transaction-item-row
+  [{account :transaction-item/account action :transaction-item/action amount :transaction-item/amount}]
+  [:tr
+   [:td (-> account
+            d/touch
+            :account/name)]
+   [:td action]
+   [:td (util/format-number amount)]])
+
+(defn show-transaction
+  [id]
+  (main-layout
+    "Transaction"
+    [:div.page-header
+     [:h1 "Transaction"]]
+    (let [conn (d/connect common/uri)
+         transaction (transactions/get-transaction (d/db conn) (java.lang.Long/parseLong id))]
+      (html [:div.row
+             [:div.col-md-4
+              [:table.table.table-striped
+               [:tr
+                [:th.col-md-2 "Date"]
+                [:td.col-md-4 (util/format-date (:transaction/date transaction))]]
+               [:tr
+                [:th "Description"]
+                [:td (:transaction/description transaction)]]]]]
+            [:table.table.table-striped
+             [:tr
+              [:th "Account"]
+              [:th "Action"]
+              [:th "Amount"]]
+             (map transaction-item-row (:transaction/items transaction))]))
+    [:a.btn.btn-default {:href "/transactions"} "Back"]))
+
 (defn transaction-row
-  [{transaction-date :transaction/date description :transaction/description items :transaction/items :as transaction}]
+  [{transaction-date :transaction/date
+    description :transaction/description
+    items :transaction/items
+    id :db/id
+    :as transaction}]
   (let [amount (->> items
                     (filter #(= :transaction-item.action/credit (:transaction-item/action %)))
                     (map :transaction-item/amount)
@@ -23,7 +61,7 @@
   [:tr
    [:td (util/format-date transaction-date)]
    [:td description]
-   [:td (util/format-number amount)]]))
+   [:td [:a {:href (str "/transactions/" id)} (util/format-number amount)]]]))
 
 (defn index-transactions
   []
@@ -41,7 +79,7 @@
             (map transaction-row)))]
     [:a.btn.btn-default {:href "/transactions/new"} "New"]))
 
-(defn transaction-item-row
+(defn transaction-item-form-row
   [index]
   [:tr
    [:td
@@ -66,7 +104,7 @@
       [:th.col-md-6 "Account"]
       [:th.col-md-3 "Debit"]
       [:th.col-md-3 "Credit"]]
-     (map transaction-item-row (range 9))]
+     (map transaction-item-form-row (range 9))]
     [:div.btn-group
      [:input.btn.btn-primary {:type "submit" :value "Save"}]
      [:a.btn.btn-default {:href "/transactions"} "Cancel"]]))
