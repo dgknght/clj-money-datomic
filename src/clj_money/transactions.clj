@@ -22,6 +22,25 @@
         (pull-many db '[*])
         (resolve-transactions-enums db))))
 
+(defn get-account-transaction-items
+  "Returns all transactions referencing the specified account"
+  [db account-id]
+  (->> (d/q
+         '[:find ?t
+           :in $ ?account-id
+           :where [?ti :transaction-item/account ?account-id]
+                  [?t :transaction/items ?ti]]
+         db
+         account-id)
+       (map first)
+       (pull-many db '[*])
+       (reduce (fn [result {items :transaction/items :as transaction}]
+                 (concat result
+                         (->> items
+                              (filter #(= account-id (-> % :transaction-item/account :db/id)))
+                              (map #(vector % transaction)))))
+               [])))
+
 (declare resolve-transaction-data)
 (declare validate-transaction-data)
 

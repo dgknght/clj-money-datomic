@@ -2,14 +2,45 @@
   (:require [clojure.tools.logging :as log]
             [clojure.set :refer [rename-keys]]
             [clj-money.accounts :as accounts]
+            [clj-money.transactions :as transactions]
             [clj-money.reports :as reports]
             [clj-money.common :as common]
+            [clj-money.util :as util]
             [clj-money.web.layouts :refer :all]
             [datomic.api :as d]
             [ring.util.anti-forgery :refer :all]
             [ring.util.response :refer [redirect]]
             [hiccup.core :refer :all]
             [hiccup.page :refer :all]))
+
+(defn account-transaction-row
+  [[item transaction]]
+  [:tr
+   [:td (util/format-date (:transaction/date transaction))]
+   [:td (:transaction/description transaction)]
+   [:td (util/format-number (:transaction-item/amount item))]
+   [:td "&nbsp;"]])
+
+(defn account-transactions-table
+  [db account]
+  [:table.table.table-striped.table-hover
+   [:th "Date"]
+   [:th "Description"]
+   [:th "Amount"]
+   [:th "Balance"]
+   (map account-transaction-row (transactions/get-account-transaction-items db (:db/id account)))])
+
+(defn show-account
+  [id]
+  (main-layout
+    "Account"
+    (let [db (d/db (d/connect common/uri))
+          account (accounts/find-account db (java.lang.Long/parseLong id))]
+      (html [:div.page-header
+             [:h1 (:account/name account)]]
+            (account-transactions-table db account)
+            [:div.btn-group
+             [:a.btn.btn-default {:href "/accounts"} "Back"]]))))
 
 (defn delete-form
   [model-type id]
@@ -25,7 +56,9 @@
   [:tr
    (if (= :header style)
      [:th caption]
-     [:td [:div {:class (str "depth-" depth)} caption]])
+     [:td
+      [:div {:class (str "depth-" depth)}
+       [:a {:href (str "/accounts/" id)} caption]]])
    [:td
     [:div.pull-left
      [:a.btn.btn-link.btn-sm {:href (str "/accounts/" id "/edit")}

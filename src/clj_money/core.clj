@@ -14,6 +14,7 @@
   (GET "/accounts" [] (accounts/index-accounts))
   (POST "/accounts" [:as {params :params}] (accounts/create-account params))
   (GET "/accounts/new" [] (accounts/new-account))
+  (GET "/accounts/:id" [id] (accounts/show-account id))
   (GET "/accounts/:id/edit" [id] (accounts/edit-account id))
   (POST "/accounts/:id" [id :as {params :params}] (accounts/update-account id params))
   (POST "/accounts/:id/delete" [id] (accounts/delete-account id))
