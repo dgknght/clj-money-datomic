@@ -19,8 +19,10 @@
 
 (defn format-number
   [value]
-  (-> (java.text.DecimalFormat. "#,##0.00")
-      (.format value)))
+  (if value
+    (-> (java.text.DecimalFormat. "#,##0.00")
+        (.format value))
+    nil))
 
 (defn println-and-return
   "Prints the specified information and then returns it"

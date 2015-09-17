@@ -52,14 +52,15 @@
       [:span.glyphicon.glyphicon-remove {:aria-hidden true}]]])
 
 (defn account-row
-  [{:keys [style caption depth account-type] {id :db/id} :account :as display-record}]
+  [{:keys [style caption depth account-type] {id :db/id balance :account/balance} :account :as display-record}]
   [:tr
    (if (= :header style)
-     [:th caption]
+     [:th.col-md-5 caption]
      [:td
       [:div {:class (str "depth-" depth)}
        [:a {:href (str "/accounts/" id)} caption]]])
-   [:td
+   [:td.col-md-5.text-right (util/format-number balance)]
+   [:td.col-md-2
     [:div.pull-left
      [:a.btn.btn-link.btn-sm {:href (str "/accounts/" id "/edit")}
       [:span.glyphicon.glyphicon-pencil {:aria-hidden true}]]]
@@ -74,10 +75,12 @@
     "Accounts"
     [:div.page-header
      [:h1 "Accounts"]]
-    [:table.table.table-striped
-     (let [conn (d/connect common/uri)
-           list (reports/account-list-with-headers (d/db conn))]
-       (map account-row list))]
+    [:div.row
+     [:div.col-md-6
+      [:table.table.table-striped.table-hover
+       (let [conn (d/connect common/uri)
+             list (reports/account-list-with-headers (d/db conn))]
+         (map account-row list))]]]
     [:a.btn.btn-default {:href "accounts/new"} "New"]))
 
 (defn select-option
