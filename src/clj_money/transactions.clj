@@ -72,7 +72,9 @@
   (update transaction-data
           :transaction/items
           (fn [items]
-            (map (fn [item] (update item :transaction-item/account (partial resolve-account-id db)))
+            (map (fn [item] (if (string? (:transaction-item/account item))
+                              (update item :transaction-item/account (partial resolve-account-id db))
+                              item))
                  items))))
 
 (defn update-transaction
