@@ -25,6 +25,7 @@
   (GET "/transactions/:id" [id] (transactions/show-transaction id))
   (GET "/transactions/:id/edit" [id] (transactions/edit-transaction id))
   (POST "/transactions/:id" [id :as {params :params}] (transactions/update-transaction id params))
+  (POST "/transactions/:id/delete" [id] (transactions/delete-transaction id))
 
   (route/not-found (html [:h1 "Resource not found"])))
 

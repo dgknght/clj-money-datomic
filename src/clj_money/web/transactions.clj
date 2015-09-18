@@ -14,6 +14,12 @@
             [clj-time.core :as t]
             [clj-time.coerce :as c]))
 
+(defn delete-transaction
+  [id]
+  (let [conn (d/connect common/uri)]
+    (common/delete-entity conn (util/parse-long id)))
+  (redirect "/transactions"))
+
 (defn extract-transaction-item
   [params index]
   (let [[account debit credit id] (->> ["account" "debit" "credit" "id"]
