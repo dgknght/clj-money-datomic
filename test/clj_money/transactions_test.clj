@@ -31,7 +31,7 @@
                                                   {:transaction-item/action :transaction-item.action/credit
                                                    :transaction-item/account "Salary"
                                                    :transaction-item/amount (bigdec 1000)}]})
-          transactions (get-transactions (d/db conn) #inst "2014-12-01" #inst "2014-12-31")
+          transactions (get-transactions (d/db conn))
           transaction (first transactions)]
       (is (= 1 (count transactions)))
       (is (= #inst "2014-12-15" (:transaction/date transaction)))
