@@ -222,7 +222,7 @@
     (let [conn (create-empty-db)
           _ (add-account conn "Checking")
           after-add (find-account-by-path (d/db conn) "Checking")
-          _ (delete-account conn (:db/id after-add))
+          _ (delete-entity conn (:db/id after-add))
           after-delete (find-account-by-path (d/db conn) "Checking")]
       (is (not (nil? after-add)))
       (is (nil? after-delete)))))
