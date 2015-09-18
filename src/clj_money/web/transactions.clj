@@ -14,13 +14,39 @@
             [clj-time.core :as t]
             [clj-time.coerce :as c]))
 
+(defn extract-transaction-item
+  [params index]
+  (let [[account debit credit id] (->> ["account" "debit" "credit" "id"]
+                                       (map #(keyword (str "transaction-item-" % "-" index)))
+                                       (map #(% params)))]
+    (when-not (or (empty? account) (and (empty? debit) (empty? credit)))
+      {:db/id (util/parse-long id)
+       :transaction-item/action (if (empty? debit) :transaction-item.action/credit :transaction-item.action/debit)
+       :transaction-item/amount (if (empty? debit) (bigdec credit) (bigdec debit))
+       :transaction-item/account account})))
+
+(defn extract-transaction-items
+  [params]
+  (->> (iterate inc 0)
+       (map #(extract-transaction-item params %))
+       (take-while identity)))
+
+(defn transaction-params
+  [params]
+  (-> params
+      (select-keys [:transaction-date :description :id])
+      (rename-keys {:transaction-date :transaction/date
+                    :description :transaction/description
+                    :id :db/id})
+      (update :transaction/date util/parse-date)
+      (update :db/id util/parse-long)
+      (assoc :transaction/items (extract-transaction-items params))))
+
 (defn update-transaction
   [id params]
-  (main-layout
-    "Update Transactions"
-    [:div.page-header
-     [:h1 "Update Transaction"]]
-    [:pre (util/pp-str params)]))
+  (let [conn (d/connect common/uri)]
+    (transactions/update-transaction conn (transaction-params params)))
+  (redirect "/transactions"))
 
 (defn transaction-item-form-row
   [index {amount :transaction-item/amount
@@ -32,9 +58,11 @@
         account-field (str "transaction-item-account-" index)
         account-name (if account (-> account d/touch :account/name) nil)
         debit-amount-name (str "transaction-item-debit-" index)
-        credit-amount-name (str "transaction-item-credit-" index)]
+        credit-amount-name (str "transaction-item-credit-" index)
+        id-name (str "transaction-item-id-" index)]
     [:tr
      [:td
+      [:input {:type "hidden" :name id-name :value (:db/id item)}]
       [:input.form-control {:type "text"
                             :name account-field
                             :id account-field
@@ -166,31 +194,6 @@
      [:h1 "New Transaction"]]
     [:form {:action "/transactions" :method "POST"}
      (form-fields)]))
-
-(defn extract-transaction-item
-  [params index]
-  (let [[account debit credit] (->> ["account" "debit" "credit"]
-                                    (map #(keyword (str "transaction-item-" % "-" index)))
-                                    (map #(% params)))]
-    (when-not (empty? account)
-      {:transaction-item/account account
-       :transaction-item/action (if (empty? debit) :transaction-item.action/credit :transaction-item.action/debit)
-       :transaction-item/amount (if (empty? debit) (bigdec credit) (bigdec debit))})))
-
-(defn extract-transaction-items
-  [params]
-  (->> (iterate inc 0)
-       (map #(extract-transaction-item params %))
-       (take-while identity)))
-
-(defn transaction-params
-  [params]
-  (-> params
-      (select-keys [:transaction-date :description])
-      (rename-keys {:transaction-date :transaction/date
-                    :description :transaction/description})
-      (update :transaction/date util/parse-date)
-      (assoc :transaction/items (extract-transaction-items params))))
 
 (defn create-transaction
   [params]
