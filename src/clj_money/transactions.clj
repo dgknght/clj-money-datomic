@@ -1,6 +1,7 @@
 (ns clj-money.transactions
   (:require [datomic.api :as d :refer [tempid q db transact pull-many]]
             [clojure.tools.logging :as log]
+            [clojure.pprint :refer [pprint]]
             [clj-time.core :as t])
   (:use clj-money.common
         clj-money.accounts)
@@ -63,6 +64,11 @@
           tempids (:tempids result)]
       (adjust-account-balances conn (:transaction/items complete-data))
       (d/resolve-tempid (d/db conn) tempids new-id))))
+
+(defn update-transaction
+  "Updates an existing transaction in the system"
+  [conn data]
+  @(d/transact conn [data]))
 
 (defn add-simple-transaction
   "Add a two-item transaction, crediting one account and debiting another"

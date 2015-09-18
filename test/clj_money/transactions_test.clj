@@ -146,3 +146,24 @@
       (is (= (bigdec 900) balance-01-04))
       (is (= (bigdec 800) balance-01-11))
       (is (= (bigdec 810) balance-12-31)))))
+
+(deftest update-a-transaction
+  (testing "After I update a transaction, I can read the new values back from storage"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Checking")
+          _ (add-account conn {:account/name "Salary" :account/type :account.type/income})
+          transaction-data {:transaction/date #inst "2015-01-01"
+                            :transaction/description "Not the right description"
+                            :transaction/items [{:transaction-item/account "Checking"
+                                                 :transaction-item/amount (bigdec 1000)
+                                                 :transaction-item/action :transaction-item.action/debit}
+                                                {:transaction-item/account "Salary"
+                                                 :transaction-item/amount (bigdec 1000)
+                                                 :transaction-item/action :transaction-item.action/credit}]}
+          _ (add-transaction conn transaction-data)
+          transaction (-> conn d/db get-transactions first (into {}))
+          updated-trans (assoc transaction :transaction/description "Paycheck")
+          _ (update-transaction conn updated-trans)
+          all-transactions (-> conn d/db get-transactions)]
+      (is (= 1 (count all-transactions)))
+      (is (= "Paycheck" (-> all-transactions first :transaction/description))))))
