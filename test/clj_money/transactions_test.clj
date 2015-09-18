@@ -1,5 +1,6 @@
 (ns clj-money.transactions-test
   (:require [clojure.test :refer :all]
+            [clojure.pprint :refer [pprint]]
             [datomic.api :as d :refer [db]])
   (:use clj-money.test-common
         clj-money.accounts
@@ -147,22 +148,39 @@
       (is (= (bigdec 800) balance-01-11))
       (is (= (bigdec 810) balance-12-31)))))
 
+(defn create-update-test-transaction
+  "Creates a transaction used in the update tests"
+  [conn]
+  (add-account conn "Checking")
+  (add-account conn {:account/name "Salary" :account/type :account.type/income})
+  (add-transaction conn {:transaction/date #inst "2015-01-01"
+                         :transaction/description "Not the right description"
+                         :transaction/items [{:transaction-item/account "Checking"
+                                              :transaction-item/amount (bigdec 1000)
+                                              :transaction-item/action :transaction-item.action/debit}
+                                             {:transaction-item/account "Salary"
+                                              :transaction-item/amount (bigdec 1000)
+                                              :transaction-item/action :transaction-item.action/credit}]}))
+
 (deftest update-a-transaction
   (testing "After I update a transaction, I can read the new values back from storage"
     (let [conn (create-empty-db)
-          _ (add-account conn "Checking")
-          _ (add-account conn {:account/name "Salary" :account/type :account.type/income})
-          transaction-data {:transaction/date #inst "2015-01-01"
-                            :transaction/description "Not the right description"
-                            :transaction/items [{:transaction-item/account "Checking"
-                                                 :transaction-item/amount (bigdec 1000)
-                                                 :transaction-item/action :transaction-item.action/debit}
-                                                {:transaction-item/account "Salary"
-                                                 :transaction-item/amount (bigdec 1000)
-                                                 :transaction-item/action :transaction-item.action/credit}]}
-          _ (add-transaction conn transaction-data)
+          _ (create-update-test-transaction conn)
           transaction (-> conn d/db get-transactions first (into {}))
           updated-trans (assoc transaction :transaction/description "Paycheck")
+          _ (update-transaction conn updated-trans)
+          all-transactions (-> conn d/db get-transactions)]
+      (is (= 1 (count all-transactions)))
+      (is (= "Paycheck" (-> all-transactions first :transaction/description)))))
+  (testing "Account names are resolved to account IDs"
+    (let [conn (create-empty-db)
+          _ (create-update-test-transaction conn)
+          transaction (-> conn d/db get-transactions first (into {}))
+          updated-trans (-> transaction
+                            (assoc :transaction/description "Paycheck")
+                            (update-in [:transaction/items] vec)
+                            (assoc-in [:transaction/items 0 :transaction-item/account] "Checking")
+                            (assoc-in [:transaction/items 1 :transaction-item/account] "Salary"))
           _ (update-transaction conn updated-trans)
           all-transactions (-> conn d/db get-transactions)]
       (is (= 1 (count all-transactions)))
