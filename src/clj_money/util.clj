@@ -17,6 +17,11 @@
   [value]
   (f/parse (:date-time f/formatters) value))
 
+(defn parse-long
+  [value]
+  (if value
+    (java.lang.Long/parseLong value)))
+
 (defn format-number
   [value]
   (if value
