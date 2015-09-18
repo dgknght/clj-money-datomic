@@ -28,6 +28,17 @@
           account (find-account-by-path (d/db conn) "Checking")]
       (is (= "Checking" (:account/name account))))))
 
+(deftest get-an-account-and-all-its-parents
+  (testing "Given a path, I can get the account with all of its parents"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Savings")
+          _ (add-account conn {:account/name "Cars" :account/parent "Savings"})
+          _ (add-account conn {:account/name "His" :account/parent "Savings/Cars"})
+          _ (add-account conn {:account/name "Hers" :account/parent "Savings/Cars"})
+          _ (add-account conn "Checking")
+          accounts (get-account-with-parents (d/db conn) "Savings/Cars/His")]
+      (is (= ["His" "Cars" "Savings"] (mapv :account/name accounts))))))
+
 (deftest get-an-account-id-by-path
   (testing "After I save an account, I can get its ID by path"
     (let [conn (create-empty-db)
@@ -109,6 +120,13 @@
           _ (debit-account conn id (bigdec 100))
           balance (get-balance (d/db conn) id)]
       (is (= (bigdec 200) balance))))
+  (testing "Debiting an child asset account increases the children-balance of the parent"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Savings")
+          _ (add-account conn {:account/name "Reserve" :account/parent "Savings"})
+          _ (debit-account conn "Savings/Reserve" (bigdec 101))
+          savings (find-account-by-path (d/db conn) "Savings")]
+      (is (= (bigdec 101) (:account/children-balance savings)))))
   (testing "Debiting an expense account increases the balance"
     (let [conn (create-empty-db)
           _ (add-account conn {:account/name "Rent" :account/type :account.type/expense})

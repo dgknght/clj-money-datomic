@@ -38,6 +38,13 @@
   :db/doc "The current balance of the account"
   :db.install/_attribute :db.part/db}
 
+ {:db/id #db/id[:db.part/db]
+  :db/ident :account/children-balance
+  :db/valueType :db.type/bigdec
+  :db/cardinality :db.cardinality/one
+  :db/doc "The current balance of the children of the account"
+  :db.install/_attribute :db.part/db}
+
   ;; Transactions
 
  {:db/id #db/id[:db.part/db]

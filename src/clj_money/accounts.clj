@@ -5,6 +5,8 @@
             [clojure.tools.logging :as log])
   (:gen-class))
 
+(def path-separator "/")
+
 (defn left-side?
   "Returns true if the account is on the left side of the A = L + E equation. I.e., if it's an asset or an expense."
   [account]
@@ -111,14 +113,19 @@
   "Given an account (or an ID), calculates the path by looking up parents in the database"
   [account accounts]
   (if-let [parent (:account/parent account)]
-    (str (calculate-path-with-list parent accounts) "/" (:account/name account))
+    (str (calculate-path-with-list parent accounts) path-separator (:account/name account))
     (:account/name account)))
+
+(defn path-segments
+  "Given a path, returns the segments that make up the path"
+  [path]
+  (str/split path #"\/"))
 
 (defn find-account-id-by-path
   "Finds an account with the specified path"
   [db path]
   (let [find-account (partial find-account-id-by-name-and-parent db)]
-    (reduce find-account nil (str/split path #"\/"))))
+    (reduce find-account nil (path-segments path))))
 
 (defn find-account-by-path
   "Finds an account with the specified path"
@@ -144,21 +151,26 @@
         (integer? token) (d/entity db token)
         :else token))
 
+(defn balance-adjustment-tx-data
+  "Returns the transaction date for adjusting the balance of an account"
+  [account adjustment-amount]
+  [:db/add (:db/id account)
+   :account/balance (+ (:account/balance account) adjustment-amount)])
+
 (defn adjust-balance
   "Adjusts the balance of the account based on the specified action on the specifie amount."
   [conn account-token amount action]
   (let [account (resolve-account (d/db conn) account-token)
         pol (polarizer account action)
-        current-balance (:account/balance account)
-        polarized-amount (* pol amount)
-        new-balance (+ current-balance polarized-amount)
-        tx-data [[:db/add (:db/id account) :account/balance new-balance]]]
+        adjustment-amount (* pol amount)
+        tx-data [(balance-adjustment-tx-data account adjustment-amount)]]
     @(d/transact conn tx-data)))
 
 (defn debit-account
   "Debits the specified account"
-  [conn id amount]
-  (adjust-balance conn id amount :transaction-item.action/debit))
+  [conn id-or-path amount]
+  (let [id (resolve-account-id (d/db conn) id-or-path)]
+    (adjust-balance conn id amount :transaction-item.action/debit)))
 
 (defn credit-account
   "Debits the specified account"
@@ -167,13 +179,14 @@
 
 (defn get-balance
   "Gets the balance for the specified account"
-  [db id]
-  (first (d/q
-           '[:find [?balance]
-             :in $ ?a
-             :where [?a :account/balance ?balance]]
-           db
-           id)))
+  [db id-or-path]
+  (let [id (resolve-account-id db id-or-path)]
+    (first (d/q
+             '[:find [?balance]
+               :in $ ?a
+               :where [?a :account/balance ?balance]]
+             db
+             id))))
 
 (defn validate-type
   [context attributes]
