@@ -4,7 +4,8 @@
             [clojure.pprint :refer [pprint]]
             [clj-time.core :as t])
   (:use clj-money.common
-        clj-money.accounts)
+        clj-money.accounts
+        [clj-money.util :as util])
   (:gen-class))
 
 ;; ----- Primary methods -----
@@ -65,10 +66,19 @@
       (adjust-account-balances conn (:transaction/items complete-data))
       (d/resolve-tempid (d/db conn) tempids new-id))))
 
+(defn resolve-references
+  "Looks up account references in the transaction data and replaced when with entity ID values"
+  [db transaction-data]
+  (update transaction-data
+          :transaction/items
+          (fn [items]
+            (map (fn [item] (update item :transaction-item/account (partial resolve-account-id db)))
+                 items))))
+
 (defn update-transaction
   "Updates an existing transaction in the system"
   [conn data]
-  @(d/transact conn [data]))
+  @(d/transact conn [(resolve-references (d/db conn) data)]))
 
 (defn add-simple-transaction
   "Add a two-item transaction, crediting one account and debiting another"
