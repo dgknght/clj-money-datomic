@@ -19,7 +19,7 @@
 
 (defn parse-long
   [value]
-  (if value
+  (if-not (empty? value)
     (java.lang.Long/parseLong value)))
 
 (defn format-number
