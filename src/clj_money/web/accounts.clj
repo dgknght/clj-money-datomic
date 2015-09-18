@@ -184,5 +184,5 @@
   "Deletes the specified account"
   [account-id]
   (let [conn (d/connect common/uri)]
-    (accounts/delete-account conn (Long. account-id)))
+    (common/delete-entity conn (Long. account-id)))
   (redirect "/accounts"))

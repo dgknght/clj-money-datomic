@@ -29,6 +29,13 @@
     (d/transact c schema)
     (log/info "created the schema in database at " uri)))
 
+(defn delete-entity
+  "Removes an account from the system"
+  [conn id]
+  (let [entity (d/entity (d/db conn) id)]
+    @(d/transact conn
+                 [[:db.fn/retractEntity (:db/id entity)]])))
+
 (defn entity-map->hash-map
   "Accepts an EntityMap and returns a run-of-the-mill hash map"
   [entity]

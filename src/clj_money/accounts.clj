@@ -251,10 +251,3 @@
   [db account-id]
   (let [entity (d/entity db account-id)]
     (d/touch entity)))
-
-(defn delete-account
-  "Removes an account from the system"
-  [conn account-id]
-  (let [entity (d/entity (d/db conn) account-id)]
-    @(d/transact conn
-                 [[:db.fn/retractEntity (:db/id entity)]])))
