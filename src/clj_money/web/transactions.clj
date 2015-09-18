@@ -20,10 +20,12 @@
                                        (map #(keyword (str "transaction-item-" % "-" index)))
                                        (map #(% params)))]
     (when-not (or (empty? account) (and (empty? debit) (empty? credit)))
-      {:db/id (util/parse-long id)
-       :transaction-item/action (if (empty? debit) :transaction-item.action/credit :transaction-item.action/debit)
-       :transaction-item/amount (if (empty? debit) (bigdec credit) (bigdec debit))
-       :transaction-item/account account})))
+      (let [required {:transaction-item/action (if (empty? debit) :transaction-item.action/credit :transaction-item.action/debit)
+                      :transaction-item/amount (if (empty? debit) (bigdec credit) (bigdec debit))
+                      :transaction-item/account account}]
+        (if (empty? id)
+          required
+          (assoc required :db/id (util/parse-long id)))))))
 
 (defn extract-transaction-items
   [params]
@@ -32,15 +34,16 @@
        (take-while identity)))
 
 (defn transaction-params
-  [params]
-  (-> params
-      (select-keys [:transaction-date :description :id])
-      (rename-keys {:transaction-date :transaction/date
-                    :description :transaction/description
-                    :id :db/id})
-      (update :transaction/date util/parse-date)
-      (update :db/id util/parse-long)
-      (assoc :transaction/items (extract-transaction-items params))))
+  [{id :id :as params}]
+  (let [required (-> params
+                     (select-keys [:transaction-date :description])
+                     (rename-keys {:transaction-date :transaction/date
+                                   :description      :transaction/description})
+                     (update :transaction/date util/parse-date)
+                     (assoc :transaction/items (extract-transaction-items params)))]
+    (if (empty? id)
+      required
+      (assoc required :db/id (util/parse-long id)))))
 
 (defn update-transaction
   [id params]
