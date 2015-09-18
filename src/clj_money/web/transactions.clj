@@ -206,9 +206,6 @@
 
 (defn create-transaction
   [params]
-
-  (log/debug "dbk create-transaction " (prn-str (transaction-params params)))
-
   (let [conn (d/connect common/uri)]
     (transactions/add-transaction conn (transaction-params params)))
   (redirect "/transactions"))
