@@ -7,6 +7,11 @@
 
 (def path-separator "/")
 
+(defn find-account
+  [db account-id]
+  (let [entity (d/entity db account-id)]
+    (d/touch entity)))
+
 (defn left-side?
   "Returns true if the account is on the left side of the A = L + E equation. I.e., if it's an asset or an expense."
   [account]
@@ -151,6 +156,13 @@
         (integer? token) (d/entity db token)
         :else token))
 
+(defn get-account-with-parents
+  "Returns a sequence containing the specified account, followed by its parent, on up the chain until a root account is reached"
+  [db account-token]
+  (if account-token
+    (let [{parent :account/parent :as account} (resolve-account db account-token)]
+      (cons account (get-account-with-parents db parent)))))
+
 (defn balance-adjustment-tx-data
   "Returns the transaction date for adjusting the balance of an account"
   [account adjustment-amount]
@@ -226,7 +238,8 @@
 
 (def default-account-attributes
   {:account/type :account.type/asset
-   :account/balance (bigdec 0)})
+   :account/balance (bigdec 0)
+   :account/children-balance (bigdec 0)})
 
 (defn add-account
   "Saves an account to the database"
@@ -259,8 +272,3 @@
     @(d/transact
        conn
        [tx-data])))
-
-(defn find-account
-  [db account-id]
-  (let [entity (d/entity db account-id)]
-    (d/touch entity)))
