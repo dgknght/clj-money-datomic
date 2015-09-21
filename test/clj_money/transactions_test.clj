@@ -17,12 +17,18 @@
   "Creates accounts needed for the tests"
   [conn]
   (doseq [account-def account-defs]
-    (add-account conn account-def)))
+    (add-account conn account-def))
+  conn)
+
+(defn new-test-db
+  "Creates and populates a test db"
+  []
+  (-> (create-empty-db)
+      add-test-accounts))
 
 (deftest add-a-transaction
   (testing "When I add a transaction, it appears in the list of transactions"
-    (let [conn (create-empty-db)
-          _ (add-test-accounts conn)
+    (let [conn (new-test-db)
           _ (add-transaction conn
                              {:transaction/date #inst "2014-12-15"
                               :transaction/description "Paycheck"
@@ -41,8 +47,7 @@
       (is (= :transaction-item.action/debit (-> transaction :transaction/items first :transaction-item/action)))
       (is (= :transaction-item.action/credit (-> transaction :transaction/items second :transaction-item/action)))))
   (testing "An ID is returned that can be used to retrieve the transaction"
-    (let [conn (create-empty-db)
-          _ (add-test-accounts conn)
+    (let [conn (new-test-db)
           id (add-transaction conn
                               {:transaction/date #inst "2014-12-15"
                                :transaction/description "Paycheck"
@@ -57,8 +62,7 @@
 
 (deftest a-transaction-must-be-in-balance
   (testing "An imbalanced transaction cannot be saved"
-    (let [conn (create-empty-db)
-          _ (add-test-accounts conn)]
+    (let [conn (new-test-db)]
       (is (thrown-with-msg? IllegalArgumentException #"The transaction items must have balanced debit and credit totals"
                             (add-transaction conn
                                              {:transaction/date #inst "2014-12-15"
@@ -72,8 +76,7 @@
 
 (deftest add-a-simple-transaction
   (testing "Adding a simple transaction creates a full transaction"
-    (let [conn (create-empty-db)
-          _ (add-test-accounts conn)
+    (let [conn (new-test-db)
           db (d/db conn)
           checking (find-account-id-by-path db "Checking")
           salary (find-account-id-by-path db "Salary")
@@ -86,8 +89,7 @@
           transaction (get-transaction db id)]
       (is (= 2 (-> transaction :transaction/items count)))))
   (testing "Adding a simple transaction should affect the account balances properly"
-    (let [conn (create-empty-db)
-          _ (add-test-accounts conn)
+    (let [conn (new-test-db)
           db (d/db conn)
           checking (find-account-id-by-path db "Checking")
           salary (find-account-id-by-path db "Salary")
@@ -185,3 +187,37 @@
           all-transactions (-> conn d/db get-transactions)]
       (is (= 1 (count all-transactions)))
       (is (= "Paycheck" (-> all-transactions first :transaction/description))))))
+
+(deftest get-transaction-items-for-an-account
+  (testing "get-account-transaction-items returns tuples containing the transaction item and the transaction for all transaction items for the account"
+    (is false))
+  (testing "get-account-transaction-items returns the transaction items in descending order by transaction date"
+    (is false)))
+
+(deftest transaction-balance-chain
+  (testing "The balance for the first transaction item for an account is the same as its polarized amount"
+    (let [conn (new-test-db)
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-09-01"
+                                          :transaction/description "Paycheck"
+                                          :amount (bigdec 1000)
+                                          :debit-account "Checking"
+                                          :credit-account "Salary"})
+          checking (resolve-account (d/db conn) "Checking")
+          [transaction-item transaction] (first (get-account-transaction-items (d/db conn) (:db/id checking)))]
+      (is (= (bigdec 1000) (:transaction-item/balance transaction-item)))))
+  (testing "The transaction item balance is the sum of the polarized amount for the item and the previous transaction item balance"
+    (let [conn (new-test-db)
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-09-01"
+                                          :transaction/description "Paycheck"
+                                          :amount (bigdec 1000)
+                                          :debit-account "Checking"
+                                          :credit-account "Salary"})
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-09-02"
+                                          :transaction/description "Kroger"
+                                          :amount (bigdec 150)
+                                          :debit-account "Groceries"
+                                          :credit-account "Checking"})
+          checking (resolve-account (d/db conn) "Checking")
+          [transaction-item transaction] (first (get-account-transaction-items (d/db conn) (:db/id checking)))]
+      (is (= (bigdec 150) (:transaction-item/amount transaction-item)))
+      (is (= (bigdec 850) (:transaction-item/balance transaction-item))))))

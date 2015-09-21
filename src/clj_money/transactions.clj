@@ -25,7 +25,8 @@
         (resolve-transactions-enums db))))
 
 (defn get-account-transaction-items
-  "Returns all transactions referencing the specified account"
+  "Returns a sequence of tuples containing the transaction item and the transaction for
+  all transaction items referencing the specified account"
   [db account-id]
   (->> (d/q
          '[:find ?t
