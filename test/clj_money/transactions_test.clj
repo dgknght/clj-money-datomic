@@ -189,10 +189,28 @@
       (is (= "Paycheck" (-> all-transactions first :transaction/description))))))
 
 (deftest get-transaction-items-for-an-account
-  (testing "get-account-transaction-items returns tuples containing the transaction item and the transaction for all transaction items for the account"
-    (is false))
-  (testing "get-account-transaction-items returns the transaction items in descending order by transaction date"
-    (is false)))
+  (let [conn (create-empty-db)
+        _ (add-account conn "Checking")
+        _ (add-account conn {:account/name "Salary" :account/type :account.type/income})
+        _ (add-account conn {:account/name "Rent" :account/type :account.type/expense})
+        _ (add-simple-transaction conn {:transaction/date #inst "2015-09-02"
+                                        :transaction/description "Rent"
+                                        :amount (bigdec 450)
+                                        :debit-account "Rent"
+                                        :credit-account "Checking"})
+        _ (add-simple-transaction conn {:transaction/date #inst "2015-09-01"
+                                        :transaction/description "Paycheck"
+                                        :amount (bigdec 1000)
+                                        :debit-account "Checking"
+                                        :credit-account "Salary"})
+        result (get-account-transaction-items (d/db conn) (resolve-account-id (d/db conn) "Checking"))]
+    (testing "get-account-transaction-items returns tuples containing the transaction item and the transaction for all transaction items for the account"
+      (is (= 2 (-> result count)))
+      (is (= 2 (-> result first count)))
+      (is (contains? (-> result ffirst) :transaction-item/account))
+      (is (contains? (-> result first second) :transaction/date)))
+    (testing "get-account-transaction-items returns the transaction items in descending order by transaction date"
+      (is (= [#inst "2015-09-02" #inst "2015-09-01"] (map #(-> % second :transaction/date) result))))))
 
 (deftest transaction-balance-chain
   (testing "The balance for the first transaction item for an account is the same as its polarized amount"

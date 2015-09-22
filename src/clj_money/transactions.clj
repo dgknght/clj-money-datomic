@@ -42,7 +42,8 @@
                          (->> items
                               (filter #(= account-id (-> % :transaction-item/account :db/id)))
                               (map #(vector % transaction)))))
-               [])))
+               [])
+       (sort-by #(-> % second :transaction/date) #(compare %2 %1))))
 
 (declare resolve-transaction-data)
 (declare validate-transaction-data)
