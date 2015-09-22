@@ -14,10 +14,12 @@
 
 (defn left-side?
   "Returns true if the account is on the left side of the A = L + E equation. I.e., if it's an asset or an expense."
-  [account]
+  [{account-type :account/type :as account}]
+  (when-not account-type
+    (throw (ex-info (str "Unable to determine whether or not the account is left side of the equation." {:account account}))))
   (contains?
     #{:account.type/asset :account.type/expense}
-    (:account/type account)))
+    account-type))
 
 (defn right-side?
   "Returns true if the account is on the right side of the A = L + E equation. I.e., if it's a liability, equity, or income account."
