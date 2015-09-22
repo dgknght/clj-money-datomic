@@ -97,6 +97,20 @@
   :db/doc "The amount of currency in the transaction item"
   :db.install/_attribute :db.part/db}
 
+ {:db/id #db/id[:db.part/db]
+  :db/ident :transaction-item/index
+  :db/valueType :db.type/bigint
+  :db/cardinality :db.cardinality/one
+  :db/doc "The ordinal position of this transaction item within the items for this account"
+  :db.install/_attribute :db.part/db}
+
+ {:db/id #db/id[:db.part/db]
+  :db/ident :transaction-item/balance
+  :db/valueType :db.type/bigdec
+  :db/cardinality :db.cardinality/one
+  :db/doc "The balance of the referenced account as a result of this transaction item"
+  :db.install/_attribute :db.part/db}
+
  ;; Budgets
 
  {:db/id #db/id [:db.part/db]

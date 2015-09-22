@@ -11,6 +11,7 @@
 ;; ----- Primary methods -----
 
 (def max-date (t/date-time 9999 12 31))
+(def min-date (t/date-time 1000  1  5))
 
 (declare resolve-transactions-enums)
 (defn get-transactions
@@ -27,7 +28,8 @@
 (defn get-account-transaction-items
   "Returns a sequence of tuples containing the transaction item and the transaction for
   all transaction items referencing the specified account"
-  [db account-id]
+  ([db account-id] (get-account-transaction-items db account-id min-date))
+  ([db account-id start-date] ; TODO Implement filtering by start-date
   (->> (d/q
          '[:find ?t
            :in $ ?account-id
@@ -43,29 +45,67 @@
                               (filter #(= account-id (-> % :transaction-item/account :db/id)))
                               (map #(vector % transaction)))))
                [])
-       (sort-by #(-> % second :transaction/date) #(compare %2 %1))))
+       (sort-by #(-> % second :transaction/date) #(compare %2 %1)))))
 
 (declare resolve-transaction-data)
 (declare validate-transaction-data)
 
+; TODO Remove this function
 (defn adjust-account-balances
   "Adds tx-data for adjusting account balances for a transaction"
   [conn items]
   (doseq [{account :transaction-item/account action :transaction-item/action amount :transaction-item/amount} items]
          (adjust-balance conn account amount action)))
 
+(defn transaction-item-balance-adjustments
+  "Creates tx data necessary to adjust transaction item and account balances as the 
+  result of the specified transaction item data. The return value is a tuple containing
+  the original item data (with the balance attribute added) in the 1st position and a sequence
+  of tx data to update the corresponding account balance (and any other affected transaction items)
+  in the 2nd position."
+  [db {amount :transaction-item/amount
+       action :transaction-item/action
+       account-id :transaction-item/account
+       :as item} transaction-date]
+  (let [account (find-account db account-id)
+        pol (polarizer account action)
+        adjustment (* pol amount)
+        related-items (map first (get-account-transaction-items db account-id transaction-date))
+        before-item (first related-items)
+        after-items (rest related-items)
+        before-balance (if before-item
+                         (:transaction-item/balance before-item)
+                         (bigdec 0)) 
+        balance (+ before-balance adjustment)]
+    [(assoc item :transaction-item/balance balance)
+     []]))
+
+(defn append-balance-adjustment-tx-data
+  "Appends the datomic transaction commands necessary to adjust balances 
+  for the transaction"
+  [db {items :transaction/items transaction-date :transaction/date :as transaction}]
+  (let [final-result (reduce (fn [result item]
+                               (let [[adj-item adjustments] (transaction-item-balance-adjustments db item transaction-date)]
+                                 (-> result
+                                     (update :items conj adj-item)
+                                     (update :adjustments concat adjustments))))
+                             {:items [] :adjustments []}
+                             items)]
+    (cons (assoc transaction :transaction/items (:items final-result))
+          (:adjustments final-result))))
+
 (defn add-transaction
   "Adds a new transaction to the system"
-  [conn data]
+  [conn {items :transaction/items :as data}]
   (validate-transaction-data data)
   (let [db (d/db conn)
         new-id (d/tempid :db.part/user)
-        complete-data (->> data
-                           (resolve-transaction-data db)
-                           (merge {:db/id new-id}))]
-    (let [result @(d/transact conn [complete-data])
+        tx-data (->> data
+                     (resolve-transaction-data db)
+                     (merge {:db/id new-id})
+                     (append-balance-adjustment-tx-data db))]
+    (let [result @(d/transact conn tx-data)
           tempids (:tempids result)]
-      (adjust-account-balances conn (:transaction/items complete-data))
       (d/resolve-tempid (d/db conn) tempids new-id))))
 
 (defn resolve-references
