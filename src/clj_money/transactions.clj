@@ -32,30 +32,35 @@
 
   The date should be specified as a clj-time (joda) date time. It will be converted to
   a java date for the purpose of the query."
-  ([db account-id] (get-account-transaction-items db account-id min-date))
-  ([db account-id start-date ] (get-account-transaction-items db account-id start-date max-date))
-  ([db account-id start-date end-date]
-  (->> (d/q
-         '[:find ?t
-           :in $ ?account-id ?start-date ?end-date
-           :where [?ti :transaction-item/account ?account-id]
-                  [?t :transaction/items ?ti]
-                  [?t :transaction/date ?transaction-date]
-                  [(<= ?start-date ?transaction-date)]
-                  [(>= ?end-date ?transaction-date)]]
-         db
-         account-id
-         (coerce/to-date start-date)
-         (coerce/to-date end-date))
-       (map first)
-       (pull-many db '[*])
-       (reduce (fn [result {items :transaction/items :as transaction}]
-                 (concat result
-                         (->> items
-                              (filter #(= account-id (-> % :transaction-item/account :db/id)))
-                              (map #(vector % transaction)))))
-               [])
-       (sort-by #(-> % second :transaction/date) #(compare %2 %1)))))
+  ([db account-id] (get-account-transaction-items db account-id {}))
+  ([db account-id options] (get-account-transaction-items db account-id min-date options))
+  ([db account-id start-date options] (get-account-transaction-items db account-id start-date max-date options))
+  ([db account-id start-date end-date options]
+   (let [options (merge {:sort-order :desc} options)
+         sort-compare (if (= :asc (:sort-order options))
+                             compare
+                             #(compare %2 %1))]
+     (->> (d/q
+            '[:find ?t
+              :in $ ?account-id ?start-date ?end-date
+              :where [?ti :transaction-item/account ?account-id]
+              [?t :transaction/items ?ti]
+              [?t :transaction/date ?transaction-date]
+              [(<= ?start-date ?transaction-date)]
+              [(>= ?end-date ?transaction-date)]]
+            db
+            account-id
+            (coerce/to-date start-date)
+            (coerce/to-date end-date))
+          (map first)
+          (pull-many db '[*])
+          (reduce (fn [result {items :transaction/items :as transaction}]
+                    (concat result
+                            (->> items
+                                 (filter #(= account-id (-> % :transaction-item/account :db/id)))
+                                 (map #(vector % transaction)))))
+                  [])
+          (sort-by #(-> % second :transaction/date) sort-compare)))))
 
 (declare resolve-transaction-data)
 (declare validate-transaction-data)
@@ -80,7 +85,7 @@
   (let [account (find-account db account-id)
         pol (polarizer account action)
         adjustment (* pol amount)
-        related-items (map first (get-account-transaction-items db account-id transaction-date))
+        related-items (map first (get-account-transaction-items db account-id transaction-date {:sort-order :asc}))
         before-item (first related-items)
         after-items (rest related-items)
         before-balance (if before-item
