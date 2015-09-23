@@ -139,10 +139,10 @@
         tx-data (->> data
                      (resolve-transaction-data db)
                      (merge {:db/id new-id})
-                     (append-balance-adjustment-tx-data db))]
-    (let [result @(d/transact conn tx-data)
-          tempids (:tempids result)]
-      (d/resolve-tempid (d/db conn) tempids new-id))))
+                     (append-balance-adjustment-tx-data db))
+        result @(d/transact conn tx-data)
+        tempids (:tempids result)]
+    (d/resolve-tempid (d/db conn) tempids new-id)))
 
 (defn resolve-references
   "Looks up account references in the transaction data and replaced when with entity ID values"
