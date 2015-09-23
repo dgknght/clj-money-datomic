@@ -2,7 +2,8 @@
   (:require [datomic.api :as d :refer [tempid q db transact pull-many]]
             [clojure.tools.logging :as log]
             [clojure.pprint :refer [pprint]]
-            [clj-time.core :as t])
+            [clj-time.core :as t]
+            [clj-time.coerce :as coerce])
   (:use clj-money.common
         clj-money.accounts
         [clj-money.util :as util])
@@ -27,16 +28,25 @@
 
 (defn get-account-transaction-items
   "Returns a sequence of tuples containing the transaction item and the transaction for
-  all transaction items referencing the specified account"
+  all transaction items referencing the specified account.
+
+  The date should be specified as a clj-time (joda) date time. It will be converted to
+  a java date for the purpose of the query."
   ([db account-id] (get-account-transaction-items db account-id min-date))
-  ([db account-id start-date] ; TODO Implement filtering by start-date
+  ([db account-id start-date ] (get-account-transaction-items db account-id start-date max-date))
+  ([db account-id start-date end-date]
   (->> (d/q
          '[:find ?t
-           :in $ ?account-id
+           :in $ ?account-id ?start-date ?end-date
            :where [?ti :transaction-item/account ?account-id]
-                  [?t :transaction/items ?ti]]
+                  [?t :transaction/items ?ti]
+                  [?t :transaction/date ?transaction-date]
+                  [(<= ?start-date ?transaction-date)]
+                  [(>= ?end-date ?transaction-date)]]
          db
-         account-id)
+         account-id
+         (coerce/to-date start-date)
+         (coerce/to-date end-date))
        (map first)
        (pull-many db '[*])
        (reduce (fn [result {items :transaction/items :as transaction}]

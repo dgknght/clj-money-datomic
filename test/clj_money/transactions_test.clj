@@ -203,14 +203,34 @@
                                         :amount (bigdec 1000)
                                         :debit-account "Checking"
                                         :credit-account "Salary"})
-        result (get-account-transaction-items (d/db conn) (resolve-account-id (d/db conn) "Checking"))]
+        _ (add-simple-transaction conn {:transaction/date #inst "2015-09-15"
+                                        :transaction/description "Paycheck"
+                                        :amount (bigdec 1000)
+                                        :debit-account "Checking"
+                                        :credit-account "Salary"})
+        _ (add-simple-transaction conn {:transaction/date #inst "2015-08-15"
+                                        :transaction/description "Paycheck"
+                                        :amount (bigdec 1000)
+                                        :debit-account "Checking"
+                                        :credit-account "Salary"})
+        checking-id (resolve-account-id (d/db conn) "Checking")
+        result (get-account-transaction-items (d/db conn) checking-id)]
     (testing "get-account-transaction-items returns tuples containing the transaction item and the transaction for all transaction items for the account"
-      (is (= 2 (-> result count)))
+      (is (= 4 (-> result count)))
       (is (= 2 (-> result first count)))
       (is (contains? (-> result ffirst) :transaction-item/account))
       (is (contains? (-> result first second) :transaction/date)))
     (testing "get-account-transaction-items returns the transaction items in descending order by transaction date"
-      (is (= [#inst "2015-09-02" #inst "2015-09-01"] (map #(-> % second :transaction/date) result))))))
+      (is (= [#inst "2015-09-15" #inst "2015-09-02" #inst "2015-09-01" #inst "2015-08-15"]
+             (map #(-> % second :transaction/date) result))))
+    (testing "When a single date is specified, it returns all transactions since (and including) that date"
+      (let [since-9-1 (get-account-transaction-items (d/db conn) checking-id #inst "2015-09-01")]
+        (is (= [#inst "2015-09-15" #inst "2015-09-02" #inst "2015-09-01"]
+               (map #(-> % second :transaction/date) since-9-1)))))
+    (testing "When two dates are specified, it returns all transactions between the two dates, inclusively"
+      (let [between-dates (get-account-transaction-items (d/db conn) checking-id #inst "2015-08-01" #inst "2015-09-01")]
+        (is (= [#inst "2015-09-01" #inst "2015-08-15"]
+               (map #(-> % second :transaction/date) between-dates)))))))
 
 (deftest transaction-balance-chain
   (testing "The balance for the first transaction item for an account is the same as its polarized amount"
