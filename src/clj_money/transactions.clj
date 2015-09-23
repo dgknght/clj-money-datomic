@@ -26,6 +26,23 @@
         (pull-many db '[*])
         (resolve-transactions-enums db))))
 
+(defn prepare-transaction-item-query-result
+  "Accepts the raw results on a transaction item query and prepares it for return to the caller"
+  [db account-id {sort-order :sort-order :or {sort-order :desc}} raw-result]
+  (let [sort-compare (if (= :asc sort-order)
+                       compare
+                       #(compare %2 %1))]
+    (->> raw-result
+         (map first)
+         (pull-many db '[*])
+         (reduce (fn [result {items :transaction/items :as transaction}]
+                   (concat result
+                           (->> items
+                                (filter #(= account-id (-> % :transaction-item/account :db/id)))
+                                (map #(vector % transaction)))))
+                 [])
+         (sort-by #(-> % second :transaction/date) sort-compare))))
+
 (defn get-account-transaction-items
   "Returns a sequence of tuples containing the transaction item and the transaction for
   all transaction items referencing the specified account.
@@ -36,31 +53,35 @@
   ([db account-id options] (get-account-transaction-items db account-id min-date options))
   ([db account-id start-date options] (get-account-transaction-items db account-id start-date max-date options))
   ([db account-id start-date end-date options]
-   (let [options (merge {:sort-order :desc} options)
-         sort-compare (if (= :asc (:sort-order options))
-                             compare
-                             #(compare %2 %1))]
-     (->> (d/q
-            '[:find ?t
-              :in $ ?account-id ?start-date ?end-date
-              :where [?ti :transaction-item/account ?account-id]
-              [?t :transaction/items ?ti]
-              [?t :transaction/date ?transaction-date]
-              [(<= ?start-date ?transaction-date)]
-              [(>= ?end-date ?transaction-date)]]
-            db
-            account-id
-            (coerce/to-date start-date)
-            (coerce/to-date end-date))
-          (map first)
-          (pull-many db '[*])
-          (reduce (fn [result {items :transaction/items :as transaction}]
-                    (concat result
-                            (->> items
-                                 (filter #(= account-id (-> % :transaction-item/account :db/id)))
-                                 (map #(vector % transaction)))))
-                  [])
-          (sort-by #(-> % second :transaction/date) sort-compare)))))
+   (->>  (d/q
+           '[:find ?t
+             :in $ ?account-id ?start-date ?end-date
+             :where [?ti :transaction-item/account ?account-id]
+             [?t :transaction/items ?ti]
+             [?t :transaction/date ?transaction-date]
+             [(<= ?start-date ?transaction-date)]
+             [(>= ?end-date ?transaction-date)]]
+           db
+           account-id
+           (coerce/to-date start-date)
+           (coerce/to-date end-date))
+        (prepare-transaction-item-query-result db account-id options))))
+
+(defn get-account-transaction-items-for-transaction-adjustment
+  "Returns all transaction items for an account in ascending chronological order starting with the
+  first one that is on or before the specified date"
+  [db account-id transaction-date]
+  (->>  (d/q
+          '[:find ?t
+            :in $ ?account-id ?new-transaction-date
+            :where [?ti :transaction-item/account ?account-id]
+            [?t :transaction/items ?ti]
+            [?t :transaction/date ?transaction-date]
+            [(<= ?transaction-date ?new-transaction-date)]]
+          db
+          account-id
+          (coerce/to-date transaction-date))
+       (prepare-transaction-item-query-result db account-id {:sort-order :asc})))
 
 (declare resolve-transaction-data)
 (declare validate-transaction-data)
@@ -85,7 +106,7 @@
   (let [account (find-account db account-id)
         pol (polarizer account action)
         adjustment (* pol amount)
-        related-items (map first (get-account-transaction-items db account-id transaction-date {:sort-order :asc}))
+        related-items (map first (get-account-transaction-items-for-transaction-adjustment db account-id transaction-date))
         before-item (first related-items)
         after-items (rest related-items)
         before-balance (if before-item
