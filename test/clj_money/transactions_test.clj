@@ -262,4 +262,33 @@
           checking (resolve-account (d/db conn) "Checking")
           [transaction-item transaction] (first (get-account-transaction-items (d/db conn) (:db/id checking)))]
       (is (= (bigdec 150) (:transaction-item/amount transaction-item)))
-      (is (= (bigdec 850) (:transaction-item/balance transaction-item))))))
+      (is (= (bigdec 850) (:transaction-item/balance transaction-item)))))
+  (testing "Adding a transaction before other transactions causes the following transactions' balances to be updated"
+    (let [conn (new-test-db)
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-09-15"
+                                          :transaction/description "Paycheck"
+                                          :amount (bigdec 1000)
+                                          :debit-account "Checking"
+                                          :credit-account "Salary"})
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-09-16"
+                                          :transaction/description "Kroger"
+                                          :amount (bigdec 100)
+                                          :debit-account "Groceries"
+                                          :credit-account "Checking"})
+          checking-id (resolve-account-id (d/db conn) "Checking")
+          before (get-account-transaction-items (d/db conn) checking-id)
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-09-01"
+                                          :transaction/description "Paycheck"
+                                          :amount (bigdec 1000)
+                                          :debit-account "Checking"
+                                          :credit-account "Salary"})
+          after (get-account-transaction-items (d/db conn) checking-id)]
+      (is (= [[#inst "2015-09-16" (bigdec 900)]
+              [#inst "2015-09-15" (bigdec 1000)]]
+             (map #(vector (-> % second :transaction/date)
+                           (-> % first :transaction-item/balance)) before)))
+      (is (= [[#inst "2015-09-16" (bigdec 2900)]
+              [#inst "2015-09-15" (bigdec 2000)]
+              [#inst "2015-09-01" (bigdec 1000)]]
+             (map #(vector (-> % second :transaction/date)
+                           (-> % first :transaction-item/balance)) after))))))
