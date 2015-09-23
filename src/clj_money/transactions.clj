@@ -77,7 +77,7 @@
             :where [?ti :transaction-item/account ?account-id]
             [?t :transaction/items ?ti]
             [?t :transaction/date ?transaction-date]
-            [(<= ?transaction-date ?new-transaction-date)]]
+            [(>= ?transaction-date ?new-transaction-date)]]
           db
           account-id
           (coerce/to-date transaction-date))
