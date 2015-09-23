@@ -226,7 +226,7 @@
     (testing "get-account-transaction-items returns the transaction items in ascending order by transaction date if that option is specified"
       (let [asc-result (get-account-transaction-items (d/db conn) checking-id {:sort-order :asc})]
         (is (= [#inst "2015-08-15" #inst "2015-09-01" #inst "2015-09-02" #inst "2015-09-15"]
-               (map #(-> % second :transaction/date) result)))))
+               (map #(-> % second :transaction/date) asc-result)))))
     (testing "When a single date is specified, it returns all transactions since (and including) that date"
       (let [since-9-1 (get-account-transaction-items (d/db conn) checking-id #inst "2015-09-01" {})]
         (is (= [#inst "2015-09-15" #inst "2015-09-02" #inst "2015-09-01"]
