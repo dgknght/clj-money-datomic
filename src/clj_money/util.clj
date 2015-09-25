@@ -29,6 +29,13 @@
         (.format value))
     nil))
 
+(defn pprint-and-return
+  [msg obj]
+  (println "")
+  (println msg)
+  (pprint obj)
+  obj)
+
 (defn println-and-return
   "Prints the specified information and then returns it"
   ([caption to-print] (println-and-return caption identity to-print))

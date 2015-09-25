@@ -63,7 +63,6 @@
 
  {:db/id #db/id[:db.part/db]
   :db/ident :transaction/items
-  :db/isComponent true
   :db/valueType :db.type/ref
   :db/cardinality :db.cardinality/many
   :db/doc "The items that make up the transaction"
