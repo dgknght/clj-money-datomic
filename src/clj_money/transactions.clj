@@ -71,22 +71,6 @@
            (coerce/to-date end-date))
         (prepare-transaction-item-query-result db account-id options))))
 
-(defn get-account-transaction-items-for-transaction-adjustment
-  "Returns all transaction items for an account in ascending chronological order starting with the
-  first one that is on or before the specified date"
-  [db account-id transaction-date]
-  (->> (d/q '[:find ?ti
-              :in $ ?account-id ?new-transaction-date
-              :where [?ti :transaction-item/account ?account-id]
-              [?t :transaction/items ?ti]
-              [?t :transaction/date ?transaction-date]
-              [(>= ?transaction-date ?new-transaction-date)]]
-            db
-            account-id
-            (coerce/to-date transaction-date))
-       first
-       (pull-many db '[*])))
-
 (declare validate-transaction-data)
 
 ; TODO Remove this function
@@ -95,6 +79,20 @@
   [conn items]
   (doseq [{account :transaction-item/account action :transaction-item/action amount :transaction-item/amount} items]
          (adjust-balance conn account amount action)))
+
+(defn related-transaction-items
+  "For a given transaction item, return a tuple containing the item immediately
+  preceding the item in the 1st position and a sequence of all items that follow 
+  he item in the 2nd. Either of these values may be nil"
+  [db {account :transaction-item/account :as item} transaction-date]
+  (let [all-on-or-after (get-account-transaction-items db account transaction-date max-date {:sort-order :asc})
+        before-item (if (= transaction-date (-> all-on-or-after first second :transaction-date))
+                      (-> all-on-or-after first second)
+                      (ffirst (get-account-transaction-items db account min-date transaction-date {:sort-order :desc})))
+        after-items (if (= transaction-date (-> all-on-or-after first second :transaction-date))
+                      (->> all-on-or-after rest (map first))
+                      (map first all-on-or-after))]
+    [before-item after-items]))
 
 (defn transaction-item-balance-adjustments
   "Creates tx data necessary to adjust transaction item and account balances as the 
@@ -111,21 +109,22 @@
   (let [account (find-account db account-id)
         pol (polarizer account action)
         adjustment (* pol amount)
-        related-items (get-account-transaction-items-for-transaction-adjustment db account-id transaction-date)
-        before-item (first related-items)
-        after-items (rest related-items)
+        [before-item after-items] (related-transaction-items db item transaction-date)
         before-balance (if before-item
                          (:transaction-item/balance before-item)
                          (bigdec 0)) 
         balance (+ before-balance adjustment)]
     [(assoc item :transaction-item/balance balance)
-     (:result (reduce (fn [x {amount :transaction-item/amount account :transaction-item/account action :transaction-item/action}]
+     (:result (reduce (fn [x {amount :transaction-item/amount
+                              account :transaction-item/account
+                              action :transaction-item/action
+                              id :db/id}]
                         (let [account (find-account db (:db/id account))
                               pol (polarizer account action)
                               adjustment (* pol amount)
                               new-balance (+ (:last-balance x) adjustment)]
                           (-> x
-                              (update :result #(conj % [:db/add (:db/id item)
+                              (update :result #(conj % [:db/add id
                                                         :transaction-item/balance new-balance]))
                               (assoc :last-balance new-balance))))
                       {:last-balance balance :result []}
