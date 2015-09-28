@@ -120,13 +120,6 @@
           _ (debit-account conn id (bigdec 100))
           balance (get-balance (d/db conn) id)]
       (is (= (bigdec 200) balance))))
-  (testing "Debiting an child asset account increases the children-balance of the parent"
-    (let [conn (create-empty-db)
-          _ (add-account conn "Savings")
-          _ (add-account conn {:account/name "Reserve" :account/parent "Savings"})
-          _ (debit-account conn "Savings/Reserve" (bigdec 101))
-          savings (find-account-by-path (d/db conn) "Savings")]
-      (is (= (bigdec 101) (:account/children-balance savings)))))
   (testing "Debiting an expense account increases the balance"
     (let [conn (create-empty-db)
           _ (add-account conn {:account/name "Rent" :account/type :account.type/expense})
