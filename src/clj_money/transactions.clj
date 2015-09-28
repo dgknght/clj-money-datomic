@@ -111,14 +111,14 @@
        :as item} transaction-date]
 
   ; TODO Refactor out the redundancies between this let and the nested let
-  (let [account (find-account db account-id)
-        pol (polarizer account action)
-        adjustment (* pol amount)
+  (let [account                   (find-account db account-id)
+        pol                       (polarizer account action)
+        adjustment                (* pol amount)
         [before-item after-items] (related-transaction-items db item transaction-date)
-        before-balance (if before-item
-                         (:transaction-item/balance before-item)
-                         (bigdec 0)) 
-        balance (+ before-balance adjustment)]
+        before-balance            (if before-item
+                                    (:transaction-item/balance before-item)
+                                    (bigdec 0))
+        balance                   (+ before-balance adjustment)]
     [(assoc item :transaction-item/balance balance)
      (:result (reduce (fn [x {amount :transaction-item/amount
                               account :transaction-item/account
