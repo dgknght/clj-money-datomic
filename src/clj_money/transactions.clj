@@ -73,13 +73,6 @@
 
 (declare validate-transaction-data)
 
-; TODO Remove this function
-(defn adjust-account-balances
-  "Adds tx-data for adjusting account balances for a transaction"
-  [conn items]
-  (doseq [{account :transaction-item/account action :transaction-item/action amount :transaction-item/amount} items]
-         (adjust-balance conn account amount action)))
-
 (defn related-transaction-items
   "For a given transaction item, return a tuple containing the item immediately
   preceding the item in the 1st position and a sequence of all items that follow 
@@ -176,6 +169,7 @@
   [db data]
   (-> data
       (resolve-transaction-data db)
+      (update :transaction/date #(coerce/to-date %))
       (update :transaction/items (fn [items]
                                    (map #(assoc % :db/id (d/tempid :db.part/user)) items)))))
 

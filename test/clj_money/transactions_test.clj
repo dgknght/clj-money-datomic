@@ -1,7 +1,8 @@
 (ns clj-money.transactions-test
   (:require [clojure.test :refer :all]
             [clojure.pprint :refer [pprint]]
-            [datomic.api :as d :refer [db]])
+            [datomic.api :as d :refer [db]]
+            [clj-time.core :refer [now]])
   (:use clj-money.test-common
         clj-money.accounts
         clj-money.transactions))
@@ -11,7 +12,11 @@
                    {:account/name "Salary"
                     :account/type :account.type/income}
                    {:account/name "Groceries"
-                    :account/type :account.type/expense}])
+                    :account/type :account.type/expense}
+                   {:account/name "Opening balances"
+                    :account/type :account.type/equity}
+                   {:account/name "Credit card"
+                    :account/type :account.type/liability}])
 
 (defn add-test-accounts
   "Creates accounts needed for the tests"
@@ -235,6 +240,99 @@
       (let [between-dates (get-account-transaction-items (d/db conn) checking-id #inst "2015-08-01" #inst "2015-09-01" {})]
         (is (= [#inst "2015-09-01" #inst "2015-08-15"]
                (map #(-> % second :transaction/date) between-dates)))))))
+
+;;                  Debit     Credit
+;; Asset            Increase  Decrease
+;; Liability        Decrease  Increase
+;; Income/Revenue   Decrease  Increase
+;; Expense          Increase  Decrease
+;; Equity/Capital   Decrease  Increase
+
+(deftest debit-calculations
+  (let [conn (new-test-db)]
+    (testing "Debiting an asset account increases the balance"
+      (add-simple-transaction conn {:transaction/description "Paycheck"
+                                    :transaction/date (now)
+                                    :amount (bigdec 100)
+                                    :debit-account "Checking"
+                                    :credit-account "Salary"})
+      (let [balance (get-balance (d/db conn) "Checking")]
+        (is (= (bigdec 100) balance))))
+    (testing "Debiting an expense account increases the balance"
+      (add-simple-transaction conn {:transaction/description "Kroger"
+                                    :transaction/date (now)
+                                    :amount (bigdec 101)
+                                    :debit-account "Groceries"
+                                    :credit-account "Checking"})
+      (let [balance (get-balance (d/db conn) "Groceries")]
+        (is (= (bigdec 101) balance))))
+    (testing "Debiting a liability account decreases the balance"
+      (add-simple-transaction conn {:transaction/description "Pay credit card bill"
+                                    :transaction/date (now)
+                                    :amount (bigdec 102)
+                                    :debit-account "Credit card"
+                                    :credit-account "Checking"})
+      (let [balance (get-balance (d/db conn) "Credit card")]
+        (is (= (bigdec -102) balance))))
+    (testing "Debiting an equity account decreases the balance"
+      (add-simple-transaction conn {:transaction/description "Credit card opening balances"
+                                    :transaction/date (now)
+                                    :amount (bigdec 103)
+                                    :debit-account "Opening balances"
+                                    :credit-account "Credit card"})
+      (let [balance (get-balance (d/db conn) "Opening balances")]
+        (is (= (bigdec -103) balance))))
+    (testing "Debiting an income account decreases the balance"
+      (add-simple-transaction conn {:transaction/description "Had to give back some salary for bad behavior"
+                                    :transaction/date (now)
+                                    :amount (bigdec 104)
+                                    :debit-account "Salary"
+                                    :credit-account "Checking"})
+      (let [balance (get-balance (d/db conn) "Salary")]
+        (is (= (bigdec -104) balance))))))
+
+(deftest credit-calculations 
+  (let [conn (new-test-db)]
+    (testing "Crediting an asset account decreases the balance"
+      (add-simple-transaction conn {:transaction/description "Kroger"
+                                    :transaction/date (now)
+                                    :amount (bigdec 105)
+                                    :debit-account "Groceries"
+                                    :credit-account "Checking"})
+      (let [balance (get-balance (d/db conn) "Checking")]
+        (is (= (bigdec -105) balance))))
+    (testing "Crediting an expense account decreases the balance"
+      (add-simple-transaction conn {:transaction/description "Kroger refund for bad milk"
+                                    :transaction/date (now)
+                                    :amount (bigdec 106)
+                                    :debit-account "Checking"
+                                    :credit-account "Groceries"})
+      (let [balance (get-balance (d/db conn) "Groceries")]
+        (is (= (bigdec -106) balance))))
+    (testing "Crediting a liability account increases the balance"
+      (add-simple-transaction conn {:transaction/description "Kroger"
+                                    :transaction/date (now)
+                                    :amount (bigdec 107)
+                                    :debit-account "Groceries"
+                                    :credit-account "Credit card"})
+      (let [balance (get-balance (d/db conn) "Credit card")]
+        (is (= (bigdec 107) balance))))
+    (testing "Crediting an equity account increases the balance"
+      (add-simple-transaction conn {:transaction/description "Checking opening balance"
+                                    :transaction/date (now)
+                                    :amount (bigdec 108)
+                                    :debit-account "Checking"
+                                    :credit-account "Opening balances"})
+      (let [balance (get-balance (d/db conn) "Opening balances")]
+        (is (= (bigdec 108) balance))))
+    (testing "Crediting an income account increases the balance"
+      (add-simple-transaction conn {:transaction/description "Paycheck"
+                                    :transaction/date (now)
+                                    :amount (bigdec 109)
+                                    :debit-account "Checking"
+                                    :credit-account "Salary"})
+      (let [balance (get-balance (d/db conn) "Salary")]
+        (is (= (bigdec 109) balance))))))
 
 (deftest transaction-balance-chain
   (testing "The balance for the first transaction item for an account is the same as its polarized amount"

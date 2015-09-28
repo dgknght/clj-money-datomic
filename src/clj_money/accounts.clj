@@ -171,26 +171,6 @@
   [:db/add (:db/id account)
    :account/balance (+ (:account/balance account) adjustment-amount)])
 
-(defn adjust-balance
-  "Adjusts the balance of the account based on the specified action on the specifie amount."
-  [conn account-token amount action]
-  (let [account (resolve-account (d/db conn) account-token)
-        pol (polarizer account action)
-        adjustment-amount (* pol amount)
-        tx-data [(balance-adjustment-tx-data account adjustment-amount)]]
-    @(d/transact conn tx-data)))
-
-(defn debit-account
-  "Debits the specified account"
-  [conn id-or-path amount]
-  (let [id (resolve-account-id (d/db conn) id-or-path)]
-    (adjust-balance conn id amount :transaction-item.action/debit)))
-
-(defn credit-account
-  "Debits the specified account"
-  [conn id amount]
-  (adjust-balance conn id amount :transaction-item.action/credit))
-
 (defn get-balance
   "Gets the balance for the specified account"
   [db id-or-path]
