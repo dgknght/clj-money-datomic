@@ -99,6 +99,14 @@
   [db action]
   (get-ident db (:db/id action)))
 
+(defn account-children-balance-adjustments
+  "Given an account and an adjustment amount, returns transaction data
+  for the application of the adjustment amount up the parent chain"
+  [db account adj-amount]
+  (map #(vector :db/add (:db/id %)
+                :account/children-balance (+ adj-amount (:account/children-balance %)))
+       (rest (get-account-with-parents db account))))
+
 (defn transaction-item-balance-adjustments
   "Creates tx data necessary to adjust transaction item and account balances as the 
   result of the specified transaction item data. The return value is a tuple containing
@@ -133,7 +141,9 @@
                                                          (assoc :last-balance new-balance))))
                                                  {:last-balance balance :item-adjs []}
                                                  after-items)
-        account-adjs                     [[:db/add account-id :account/balance last-balance]]]
+        account-adjustment               (- last-balance (:account/balance account))
+        account-adjs                     (cons [:db/add account-id :account/balance last-balance]
+                                               (account-children-balance-adjustments db account account-adjustment))]
     [(assoc item :transaction-item/balance balance)
      (concat item-adjs account-adjs)]))
 
