@@ -111,29 +111,31 @@
        :as item} transaction-date]
 
   ; TODO Refactor out the redundancies between this let and the nested let
-  (let [account                   (find-account db account-id)
-        pol                       (polarizer account action)
-        adjustment                (* pol amount)
-        [before-item after-items] (related-transaction-items db item transaction-date)
-        before-balance            (if before-item
-                                    (:transaction-item/balance before-item)
-                                    (bigdec 0))
-        balance                   (+ before-balance adjustment)]
+  (let [account                          (find-account db account-id)
+        pol                              (polarizer account action)
+        adjustment                       (* pol amount)
+        [before-item after-items]        (related-transaction-items db item transaction-date)
+        before-balance                   (if before-item
+                                           (:transaction-item/balance before-item)
+                                           (bigdec 0))
+        balance                          (+ before-balance adjustment)
+        {:keys [last-balance item-adjs]} (reduce (fn [x {amount :transaction-item/amount
+                                                         account :transaction-item/account
+                                                         action :transaction-item/action
+                                                         id :db/id}]
+                                                   (let [account (find-account db (:db/id account))
+                                                         pol (polarizer account (resolve-action db action))
+                                                         adjustment (* pol amount)
+                                                         new-balance (+ (:last-balance x) adjustment)]
+                                                     (-> x
+                                                         (update :item-adjs #(conj % [:db/add id
+                                                                                      :transaction-item/balance new-balance]))
+                                                         (assoc :last-balance new-balance))))
+                                                 {:last-balance balance :item-adjs []}
+                                                 after-items)
+        account-adjs                     [[:db/add account-id :account/balance last-balance]]]
     [(assoc item :transaction-item/balance balance)
-     (:result (reduce (fn [x {amount :transaction-item/amount
-                              account :transaction-item/account
-                              action :transaction-item/action
-                              id :db/id}]
-                        (let [account (find-account db (:db/id account))
-                              pol (polarizer account (resolve-action db action))
-                              adjustment (* pol amount)
-                              new-balance (+ (:last-balance x) adjustment)]
-                          (-> x
-                              (update :result #(conj % [:db/add id
-                                                        :transaction-item/balance new-balance]))
-                              (assoc :last-balance new-balance))))
-                      {:last-balance balance :result []}
-                      after-items))]))
+     (concat item-adjs account-adjs)]))
 
 (defn append-balance-adjustment-tx-data
   "Appends the datomic transaction commands necessary to adjust balances 
