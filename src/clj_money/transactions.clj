@@ -94,6 +94,11 @@
                       (map first all-on-or-after))]
     [before-item after-items]))
 
+(defn resolve-action
+  "Looks up a transaction item action from a db/id"
+  [db action]
+  (get-ident db (:db/id action)))
+
 (defn transaction-item-balance-adjustments
   "Creates tx data necessary to adjust transaction item and account balances as the 
   result of the specified transaction item data. The return value is a tuple containing
@@ -120,7 +125,7 @@
                               action :transaction-item/action
                               id :db/id}]
                         (let [account (find-account db (:db/id account))
-                              pol (polarizer account action)
+                              pol (polarizer account (resolve-action db action))
                               adjustment (* pol amount)
                               new-balance (+ (:last-balance x) adjustment)]
                           (-> x
@@ -209,11 +214,6 @@
   "Returns a transaction, given a transaction id"
   [db id]
   (d/touch (d/entity db id)))
-
-(defn resolve-action
-  "Looks up a transaction item action from a db/id"
-  [db action]
-  (get-ident db (:db/id action)))
 
 (defn resolve-transaction-item-enums
   "Looks up references in a list of transaction item maps"

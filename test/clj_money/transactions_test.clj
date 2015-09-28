@@ -287,7 +287,7 @@
               [#inst "2015-09-15" (bigdec 1000)]]
              (map #(vector (-> % second :transaction/date)
                            (-> % first :transaction-item/balance)) before)))
-      (is (= [[#inst "2015-09-16" (bigdec 2900)]
+      (is (= [[#inst "2015-09-16" (bigdec 1900)]
               [#inst "2015-09-15" (bigdec 2000)]
               [#inst "2015-09-01" (bigdec 1000)]]
              (map #(vector (-> % second :transaction/date)
