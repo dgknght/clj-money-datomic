@@ -1,0 +1,69 @@
+{:accounts [;; Assets
+            {:account/name "Current assets"
+             :account/type :account.type/asset}
+            {:account/name "Checking"
+             :account/type :account.type/asset
+             :account/parent "Current assets"}
+            {:account/name "Savings"
+             :account/type :account.type/asset
+             :account/parent "Current assets"}
+            {:account/name "Reserve"
+             :account/type :account.type/asset
+             :account/parent "Savings"}
+            {:account/name "Car"
+             :account/type :account.type/asset
+             :account/parent "Savings"}
+            {:account/name "Cash"
+             :account/type :account.type/asset
+             :account/parent "Current assets"}
+            {:account/name "Fixed assets"
+             :account/type :account.type/asset}
+            {:account/name "House"
+             :account/type :account.type/asset
+             :account.parent "Fixed assets"}
+            ;; Liabilities
+            {:account/name "Credit cards"
+             :account/type :account.type/liability}
+            {:account/name "Mastercard"
+             :account/type :account.type/liability
+             :account/parent "Credit cards"}
+            {:account/name "Visa"
+             :account/type :account.type/liability
+             :account/parent "Credit cards"}
+            {:account/name "Loans"
+             :account/type :account.type/liability}
+            {:account/name "Home loan"
+             :account/type :account.type/liability
+             :account.parent "Loans"}
+            ;; Equity
+            {:account/name "Opening balances"
+             :account/type :account.type/equity}
+            ;; Income
+            {:account/name "Salary"
+             :account/type :account.type/income}
+            {:account/name "Interest"
+             :account/type :account.type/income}
+            {:account/name "Savings"
+             :account/type :account.type/income
+             :account/parent "Interest"}
+            ;; Expense
+            {:account/name "Groceries"
+             :account/type :account.type/expense}
+            {:account/name "Taxes"
+             :account/type :account.type/expense}
+            {:account/name "Federal"
+             :account/type :account.type/expense
+             :account/parent "Taxes"}
+            {:account/name "Social Security"
+             :account/type :account.type/expense
+             :account/parent "Taxes"}
+            {:account/name "Medicare"
+             :account/type :account.type/expense
+             :account/parent "Taxes"}
+            {:account/name "Interest"
+             :account/type :account.type/expense}
+            {:account/name "Mortgage"
+             :account/type :account.type/expense
+             :account/parent "Interest"}]
+ 
+}

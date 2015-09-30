@@ -14,20 +14,9 @@
               db,
               id)))
 
-(def schema (load-file "resources/datomic/schema.edn"))
-
 (def settings (load-file "config/settings.edn"))
 
 (def uri (:datomic-uri settings))
-
-(defn init-database
-  []
-  (log/info "creating the database at " uri "...")
-  (d/create-database uri)
-  (log/info "created database at " uri)
-  (let [c (d/connect uri)]
-    (d/transact c schema)
-    (log/info "created the schema in database at " uri)))
 
 (defn delete-entity
   "Removes an account from the system"
