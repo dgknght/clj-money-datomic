@@ -219,12 +219,13 @@
     (assoc-in context [:errors :account/name] "Name is required")))
 
 (defn validate-parent
-  [context attributes]
-  (if-let [parent-token (:account/parent attributes)]
-    (if (= (:account/type attributes)
-           (:account/type (resolve-account (:db context) parent-token)))
-      context
-      (assoc-in context [:errors :account/parent] "Parent must have the same account type"))
+  [context {account-type :account/type parent-token :account/parent :as attributes}]
+  (if parent-token
+    (let [parent (resolve-account (:db context) parent-token)
+          parent-type (:account/type parent)]
+      (if (= account-type parent-type)
+        context
+        (assoc-in context [:errors :account/parent] (str "Parent type (" parent-type ") must match the account type (" account-type ")."))))
     context))
 
 (defn validate-attributes
@@ -234,6 +235,7 @@
                        {:db db :errors {}}
                        [validate-name validate-type validate-parent])]
     (when-not (empty? (:errors result))
+      (log/error "Validation failed for account attributes " (prn-str attributes) " for these reasons: " (prn-str (:errors result)))
       (throw (ex-info "The account information supplied is not valid." (:errors result))))))
 
 (def default-account-attributes
