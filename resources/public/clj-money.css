@@ -6,6 +6,10 @@
   margin-left: 2em;
 }
 
-.depth-3 {
+.depth-2 {
   margin-left: 4em;
+}
+
+.depth-3 {
+  margin-left: 6em;
 }
