@@ -4,6 +4,7 @@
             [datomic.api :as d]
             [clj-money.common :as common]
             [clj-money.accounts :as accounts]
+            [clj-money.transactions :as transactions]
             [clj-money.util :as util]))
 
 (def schema (load-file "resources/datomic/schema.edn"))
@@ -50,4 +51,10 @@
                              (remove #(accounts/account-exists? (d/db conn) %)))]
     (doseq [account accounts-to-add]
       (accounts/add-account conn account)
-      (log/info "created account " (:account/name account)))))
+      (log/info "created account " (:account/name account)))
+    (doseq [transaction (:transactions test-data)]
+      (try
+        (transactions/add-transaction conn transaction)
+        (log/info "created transaction" (:transaction/description transaction) " on " (:transaction/date transaction))
+        (catch Exception e
+          (log/error e "Unable to add the transactions " (prn-str transaction) " due to an error."))))))
