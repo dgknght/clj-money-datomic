@@ -9,10 +9,10 @@
              :account/parent "Current assets"}
             {:account/name "Reserve"
              :account/type :account.type/asset
-             :account/parent "Savings"}
+             :account/parent "Current assets/Savings"}
             {:account/name "Car"
              :account/type :account.type/asset
-             :account/parent "Savings"}
+             :account/parent "Current assets/Savings"}
             {:account/name "Cash"
              :account/type :account.type/asset
              :account/parent "Current assets"}
@@ -41,11 +41,11 @@
             ;; Income
             {:account/name "Salary"
              :account/type :account.type/income}
-            {:account/name "Interest"
+            {:account/name "Interest income"
              :account/type :account.type/income}
             {:account/name "Savings"
              :account/type :account.type/income
-             :account/parent "Interest"}
+             :account/parent "Interest income"}
             ;; Expense
             {:account/name "Groceries"
              :account/type :account.type/expense}
@@ -54,16 +54,33 @@
             {:account/name "Federal"
              :account/type :account.type/expense
              :account/parent "Taxes"}
-            {:account/name "Social Security"
+            {:account/name "Social security"
              :account/type :account.type/expense
              :account/parent "Taxes"}
             {:account/name "Medicare"
              :account/type :account.type/expense
              :account/parent "Taxes"}
-            {:account/name "Interest"
+            {:account/name "Interest expense"
              :account/type :account.type/expense}
             {:account/name "Mortgage"
              :account/type :account.type/expense
-             :account/parent "Interest"}]
- 
+             :account/parent "Interest expense"}]
+ :transactions [;; Paychecks
+                {:transaction/date #inst "2015-01-01"
+                 :transaction/description "Paycheck"
+                 :transaction/items [{:transaction-item/account "Salary"
+                                     :transaction-item/action :transaction-item.action/credit
+                                     :transaction-item/amount 1000M}
+                                     {:transaction-item/account "Taxes/Federal"
+                                      :transaction-item/action :transaction-item.action/debit
+                                      :transaction-item/amount 150M}
+                                     {:transaction-item/account "Taxes/Social security"
+                                      :transaction-item/action :transaction-item.action/debit
+                                      :transaction-item/amount 62M}
+                                     {:transaction-item/account "Taxes/Medicare"
+                                      :transaction-item/action :transaction-item.action/debit
+                                      :transaction-item/amount 14.50M}
+                                     {:transaction-item/account "Current assets/Checking"
+                                      :transaction-item/action :transaction-item.action/debit
+                                      :transaction-item/amount 773.50M}]}]
 }
