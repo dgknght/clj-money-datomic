@@ -8,6 +8,16 @@
 
 (def schema (load-file "resources/datomic/schema.edn"))
 
+(defn create-empty-db
+  "Creates an empty database with schema at the specified URI"
+  [uri]
+  (d/delete-database uri)
+  (d/create-database uri)
+  (let [conn (d/connect uri)]
+    @(d/transact conn schema)
+    conn))
+
+; TODO Remove the redundancies with this function and the one above
 (defn init-database
   []
   (try
@@ -34,7 +44,10 @@
   (let [test-data (-> "./resources/test-data.edn"
                       slurp
                       edn/read-string)
-        conn (d/connect common/uri)]
-    (doseq [account (:accounts test-data)]
+        conn (d/connect common/uri)
+        accounts-to-add (->> test-data
+                             :accounts
+                             (remove #(accounts/account-exists? (d/db conn) %)))]
+    (doseq [account accounts-to-add]
       (accounts/add-account conn account)
       (log/info "created account " (:account/name account)))))
