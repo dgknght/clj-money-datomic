@@ -117,7 +117,7 @@
          account-name)))
 
 (defn calculate-path-with-list
-  "Given an account (or an ID), calculates the path by looking up parents in the database"
+  "Given an account (or an ID) and a list of all available accounts, calculates the path by looking up in the account list"
   [account accounts]
   (if-let [parent (:account/parent account)]
     (str (calculate-path-with-list parent accounts) path-separator (:account/name account))
@@ -165,6 +165,11 @@
     (let [{parent :account/parent :as account} (resolve-account db account-token)]
       (cons account (get-account-with-parents db parent)))))
 
+(defn calculate-path
+  "Given an account, calculates the path by lookup parents"
+  [db account]
+  (calculate-path-with-list account (get-account-with-parents db account)))
+
 (defn balance-adjustment-tx-data
   "Returns the transaction date for adjusting the balance of an account"
   [account adjustment-amount]
@@ -181,6 +186,19 @@
                :where [?a :account/balance ?balance]]
              db
              id))))
+
+(defn account-exists?
+  "Returns a boolean value indicating whether or not the specified account exists.
+  The acount may be specifiedy by path or with the same attribute map that would be 
+  used to create the account"
+  [db path-or-attribute-map]
+  (if (string? path-or-attribute-map)
+    (find-account-by-path db path-or-attribute-map)
+    (let [{parent :account/parent account-name :account/name} path-or-attribute-map
+          parent-path (if (string? parent)
+                        parent
+                        (calculate-path db (resolve-account db parent)))]
+      (find-account-by-path db (str parent-path path-separator account-name)))))
 
 (defn validate-type
   [context attributes]

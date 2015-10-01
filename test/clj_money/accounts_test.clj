@@ -3,7 +3,8 @@
             [clojure.test :refer :all]
             [clojure.tools.logging :as log]
             [clj-money.accounts :refer :all]
-            [clj-money.common :refer :all])
+            [clj-money.common :refer :all]
+            [clj-money.test-common :refer [create-empty-db]])
   (:use clj-money.test-common))
 
 (deftest save-an-account
@@ -164,3 +165,14 @@
         updated (find-account (d/db conn) id)]
     (is (= "right-name" (:account/name updated)))
     (is (= :account.type/liability (:account/type updated)))))
+
+(deftest does-an-account-exist
+  (testing "account-exists? returns true if the specified root account exists"
+    (let [conn (create-empty-db)
+          _ (add-account conn "Checking")]
+      (is (account-exists? (d/db conn) "Checking"))
+      (is (account-exists? (d/db conn) {:account/name "Checking"}))))
+  (testing "account-exists? returns false if the specified root account does not exist")
+  (testing "account-exists? returns true if the specified non-root account exists")
+  (testing "account-exists? returns false if the specified nont-root account does not exist")
+  )
