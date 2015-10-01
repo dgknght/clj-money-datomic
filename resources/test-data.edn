@@ -20,7 +20,7 @@
              :account/type :account.type/asset}
             {:account/name "House"
              :account/type :account.type/asset
-             :account.parent "Fixed assets"}
+             :account/parent "Fixed assets"}
             ;; Liabilities
             {:account/name "Credit cards"
              :account/type :account.type/liability}
@@ -34,7 +34,7 @@
              :account/type :account.type/liability}
             {:account/name "Home loan"
              :account/type :account.type/liability
-             :account.parent "Loans"}
+             :account/parent "Loans"}
             ;; Equity
             {:account/name "Opening balances"
              :account/type :account.type/equity}
