@@ -18,8 +18,8 @@
   [:tr
    [:td (util/format-date (:transaction/date transaction))]
    [:td (:transaction/description transaction)]
-   [:td (util/format-number (:transaction-item/amount item))]
-   [:td "&nbsp;"]])
+   [:td.text-right (util/format-number (:transaction-item/amount item))]
+   [:td.text-right (util/format-number (:transaction-item/balance item))]])
 
 (defn account-transactions-table
   [db account]
