@@ -48,6 +48,9 @@
                 (map #(pull db '[*] %) tuple)))
          (sort-by #(-> % second :transaction/date) sort-compare))))
 
+(def default-get-account-transaction-item-options {:sort-order :desc
+                                  :inclusive? true})
+
 (defn get-account-transaction-items
   "Returns tramsaction items referencing the specified account.
 
@@ -57,19 +60,29 @@
   ([db account-id options] (get-account-transaction-items db account-id min-date options))
   ([db account-id start-date options] (get-account-transaction-items db account-id start-date max-date options))
   ([db account-id start-date end-date options]
-   (->>  (d/q
-           '[:find ?ti ?t
-             :in $ ?account-id ?start-date ?end-date
-             :where [?ti :transaction-item/account ?account-id]
-             [?t :transaction/items ?ti]
-             [?t :transaction/date ?transaction-date]
-             [(<= ?start-date ?transaction-date)]
-             [(>= ?end-date ?transaction-date)]]
-           db
-           account-id
-           (coerce/to-date start-date)
-           (coerce/to-date end-date))
-        (prepare-transaction-item-query-result db account-id options))))
+   (let [options (merge default-get-account-transaction-item-options options)
+         query (if (:inclusive? options)
+                 '[:find ?ti ?t
+                   :in $ ?account-id ?start-date ?end-date
+                   :where [?ti :transaction-item/account ?account-id]
+                   [?t :transaction/items ?ti]
+                   [?t :transaction/date ?transaction-date]
+                   [(<= ?start-date ?transaction-date)]
+                   [(>= ?end-date ?transaction-date)]]
+                 '[:find ?ti ?t
+                   :in $ ?account-id ?start-date ?end-date
+                   :where [?ti :transaction-item/account ?account-id]
+                   [?t :transaction/items ?ti]
+                   [?t :transaction/date ?transaction-date]
+                   [(< ?start-date ?transaction-date)]
+                   [(> ?end-date ?transaction-date)]])]
+     (->>  (d/q
+             query
+             db
+             account-id
+             (coerce/to-date start-date)
+             (coerce/to-date end-date))
+          (prepare-transaction-item-query-result db account-id options)))))
 
 (declare validate-transaction-data)
 
@@ -78,14 +91,8 @@
   preceding the item in the 1st position and a sequence of all items that follow 
   he item in the 2nd. Either of these values may be nil"
   [db {account :transaction-item/account :as item} transaction-date]
-  (let [all-on-or-after (get-account-transaction-items db account transaction-date max-date {:sort-order :asc})
-        before-item (if (= transaction-date (-> all-on-or-after first second :transaction-date))
-                      (-> all-on-or-after first second)
-                      (ffirst (get-account-transaction-items db account min-date transaction-date {:sort-order :desc})))
-        after-items (if (= transaction-date (-> all-on-or-after first second :transaction-date))
-                      (->> all-on-or-after rest (map first))
-                      (map first all-on-or-after))]
-    [before-item after-items]))
+  [(ffirst (get-account-transaction-items db account min-date transaction-date {:sort-order :desc :inclusive? false}))
+   (mapv first (get-account-transaction-items db account transaction-date max-date {:sort-order :asc}))])
 
 (defn resolve-action
   "Looks up a transaction item action from a db/id"
