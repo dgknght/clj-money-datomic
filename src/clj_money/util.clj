@@ -1,5 +1,6 @@
 (ns clj-money.util
   (:require [clojure.pprint :refer :all]
+            [clojure.data :refer [diff]]
             [clj-time.format :as f]
             [clj-time.coerce :as c]
             [clojure.tools.logging :as log]))
@@ -34,6 +35,12 @@
   (println "")
   (println msg)
   (pprint obj))
+
+(defn pprint-diff
+  [expected actual]
+  (pprint-with-caption "expected" expected)
+  (pprint-with-caption "actual" actual)
+  (pprint-with-caption "diff" (diff expected actual)))
 
 (defn pprint-and-return
   [msg obj]
