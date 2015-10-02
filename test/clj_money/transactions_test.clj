@@ -5,7 +5,8 @@
             [clj-time.core :refer [now]])
   (:use clj-money.test-common
         clj-money.accounts
-        clj-money.transactions))
+        clj-money.transactions
+        clj-money.util))
 
 (def account-defs [{:account/name "Checking"
                     :account/type :account.type/asset}
@@ -398,3 +399,51 @@
               [#inst "2015-09-01" (bigdec 1000)]]
              (map #(vector (-> % second :transaction/date)
                            (-> % first :transaction-item/balance)) after))))))
+
+(deftest transaction-item-indexing
+  (testing "adding a transaction with a date after the last item puts the item at the end (front) of the account items with an index one greater than the pervious last"
+    (let [conn (new-test-db)
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-09-01"
+                                          :transaction/description "Paycheck"
+                                          :amount (bigdec 1000)
+                                          :debit-account "Checking"
+                                          :credit-account "Salary"})
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-09-02"
+                                          :transaction/description "Kroger"
+                                          :amount (bigdec 100)
+                                          :debit-account "Groceries"
+                                          :credit-account "Checking"})
+          account (resolve-account (d/db conn) "Checking")
+          items (get-account-transaction-items (d/db conn) (:db/id account))]
+      (is (= [1 0] (->> items
+                        (map first)
+                        (map #(:transaction-item/index %)))))
+      (is (= [#inst "2015-09-02" #inst "2015-09-01"] (->> items
+                                                       (map second)
+                                                       (map #(:transaction/date %)))))))
+  (testing "adding a transaction item before the last item for an account updates the index of the last item of the account"
+    (let [conn (new-test-db)
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-09-02"
+                                          :transaction/description "Kroger"
+                                          :amount (bigdec 100)
+                                          :debit-account "Groceries"
+                                          :credit-account "Checking"})
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-09-01"
+                                          :transaction/description "Paycheck"
+                                          :amount (bigdec 1000)
+                                          :debit-account "Checking"
+                                          :credit-account "Salary"})
+          account (resolve-account (d/db conn) "Checking")
+          items (get-account-transaction-items (d/db conn) (:db/id account))
+          expected [{:transaction-item/index 1
+                     :transaction/date #inst "2015-09-02"
+                     :transaction-item/balance (bigdec 900)}
+                    {:transaction-item/index 0
+                     :transaction/date #inst "2015-09-01"
+                     :transaction-item/balance (bigdec 1000)}]
+          actual (map (fn [[i t]]
+                        (merge (select-keys i [:transaction-item/index :transaction-item/balance])
+                               (select-keys t [:transaction/date])))
+                      items)]
+      (is (= expected
+             actual)))))

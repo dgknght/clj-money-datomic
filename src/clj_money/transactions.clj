@@ -120,24 +120,31 @@
                                            (:transaction-item/balance before-item)
                                            (bigdec 0))
         balance                          (+ before-balance adjustment)
+        before-index                     (if before-item
+                                           (:transaction-item/index before-item)
+                                           -1N)
+        index                             (+ before-index 1)
         {:keys [last-balance item-adjs]} (reduce (fn [x {amount :transaction-item/amount
-                                                         account :transaction-item/account
                                                          action :transaction-item/action
                                                          id :db/id}]
-                                                   (let [account (find-account db (:db/id account))
-                                                         pol (polarizer account (resolve-action db action))
+                                                   (let [pol (polarizer account (resolve-action db action))
                                                          adjustment (* pol amount)
-                                                         new-balance (+ (:last-balance x) adjustment)]
+                                                         new-balance (+ (:last-balance x) adjustment)
+                                                         new-index (+ (:last-index x) 1)]
                                                      (-> x
                                                          (update :item-adjs #(conj % [:db/add id
-                                                                                      :transaction-item/balance new-balance]))
+                                                                                      :transaction-item/balance new-balance]
+                                                                                     [:db/add id
+                                                                                      :transaction-item/index new-index]))
                                                          (assoc :last-balance new-balance))))
-                                                 {:last-balance balance :item-adjs []}
+                                                 {:last-balance balance
+                                                  :last-index index
+                                                  :item-adjs []}
                                                  after-items)
         account-adjustment               (- last-balance (:account/balance account))
         account-adjs                     (cons [:db/add account-id :account/balance last-balance]
                                                (account-children-balance-adjustments db account account-adjustment))]
-    [(assoc item :transaction-item/balance balance)
+    [(assoc item :transaction-item/balance balance :transaction-item/index index)
      (concat item-adjs account-adjs)]))
 
 (defn append-balance-adjustment-tx-data
