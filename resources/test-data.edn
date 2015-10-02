@@ -71,16 +71,7 @@
                  :transaction/items [{:transaction-item/account "Salary"
                                      :transaction-item/action :transaction-item.action/credit
                                      :transaction-item/amount 1000M}
-                                     {:transaction-item/account "Taxes/Federal"
-                                      :transaction-item/action :transaction-item.action/debit
-                                      :transaction-item/amount 150M}
-                                     {:transaction-item/account "Taxes/Social security"
-                                      :transaction-item/action :transaction-item.action/debit
-                                      :transaction-item/amount 62M}
-                                     {:transaction-item/account "Taxes/Medicare"
-                                      :transaction-item/action :transaction-item.action/debit
-                                      :transaction-item/amount 14.50M}
                                      {:transaction-item/account "Current assets/Checking"
                                       :transaction-item/action :transaction-item.action/debit
-                                      :transaction-item/amount 773.50M}]}]
+                                      :transaction-item/amount 1000M}]}]
 }
