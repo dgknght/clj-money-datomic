@@ -472,4 +472,43 @@
                                (select-keys t [:transaction/date])))
                       items)]
       (is (= expected
-             actual)))))
+             actual))))
+  (testing "When a transaction with multiple items reference the same account is saved, the transaction items are handled correctly."
+    (let [conn (new-test-db)
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
+                                          :transaction/description "Paycheck"
+                                          :amount (bigdec 1000)
+                                          :credit-account "Salary"
+                                          :debit-account "Checking"})
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-02-01"
+                                          :transaction/description "Paycheck"
+                                          :amount (bigdec 1000)
+                                          :credit-account "Salary"
+                                          :debit-account "Checking"})
+          _ (add-transaction conn {:transaction/date #inst "2015-01-15"
+                                   :transaction/description "Paycheck with bonus"
+                                   :transaction/items [{:transaction-item/action :transaction-item.action/credit
+                                                        :transaction-item/account "Salary"
+                                                        :transaction-item/amount (bigdec 1000)}
+                                                       {:transaction-item/action :transaction-item.action/credit
+                                                        :transaction-item/account "Salary"
+                                                        :transaction-item/amount (bigdec 500)}
+                                                       {:transaction-item/action :transaction-item.action/debit
+                                                        :transaction-item/account "Checking"
+                                                        :transaction-item/amount (bigdec 1500)}]})
+          actual (->> (get-account-transaction-items (d/db conn) "Checking")
+                      (map #(merge (select-keys [:transaction/date] (second %))
+                                   (select-keys [:transaction-item/amount :transaction-item/balance] (first %))))) 
+          expected [{:transaction/date #inst "2015-02-01"
+                     :transaction-item/amount (bigdec 1000)
+                     :transaction-item/balance (bigdec 3500)}
+                    {:transaction/date #inst "2015-01-15"
+                     :transaction-item/amount (bigdec 500)
+                     :transaction-item/balance (bigdec 2500)}
+                    {:transaction/date #inst "2015-01-15"
+                     :transaction-item/amount (bigdec 100)
+                     :transaction-item/balance (bigdec 2000)}
+                    {:transaction/date #inst "2015-01-01"
+                     :transaction-item/amount (bigdec 1000)
+                     :transaction-item/balance (bigdec 1000)}]]
+      (is (= expected actual)))))
