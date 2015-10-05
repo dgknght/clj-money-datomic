@@ -46,10 +46,10 @@
     (->> raw-result
          (map (fn [tuple]
                 (map #(pull db '[*] %) tuple)))
-         (sort-by #(-> % second :transaction/date) sort-compare))))
+         (sort-by #(-> % first :transaction-item/index) sort-compare))))
 
 (def default-get-account-transaction-item-options {:sort-order :desc
-                                  :inclusive? true})
+                                                   :inclusive? true})
 
 (defn get-account-transaction-items
   "Returns tramsaction items referencing the specified account.
@@ -141,9 +141,10 @@
                                                      (-> x
                                                          (update :item-adjs #(conj % [:db/add id
                                                                                       :transaction-item/balance new-balance]
-                                                                                     [:db/add id
-                                                                                      :transaction-item/index new-index]))
-                                                         (assoc :last-balance new-balance))))
+                                                                                   [:db/add id
+                                                                                    :transaction-item/index new-index]))
+                                                         (assoc :last-balance new-balance)
+                                                         (assoc :last-index new-index))))
                                                  {:last-balance balance
                                                   :last-index index
                                                   :item-adjs []}

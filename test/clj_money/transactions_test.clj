@@ -471,8 +471,5 @@
                         (merge (select-keys i [:transaction-item/index :transaction-item/balance])
                                (select-keys t [:transaction/date])))
                       items)]
-
-      (pprint-diff expected actual)
-
       (is (= expected
              actual)))))
