@@ -107,6 +107,33 @@
                 :account/children-balance (+ adj-amount (:account/children-balance %)))
        (rest (get-account-with-parents db account))))
 
+(defn process-item
+  "Given an item and a processing context, updates the context with the
+  tx data for the item including balances.
+
+  The context contains :db :last-balance :last-index and :adj-items"
+
+  [{:keys [last-balance last-index db]
+    :as context}
+   {amount              :transaction-item/amount
+    action              :transaction-item/action
+    {account-id :db/id} :transaction-item/account
+    id                  :db/id
+    :as                 item}]
+
+  (let [account     (find-account db account-id)
+        pol         (polarizer account (resolve-action db action))
+        adjustment  (* pol amount)
+        new-balance (+ last-balance adjustment)
+        new-index   (+ last-index 1)]
+    (-> context
+        (update :adj-items #(conj % [:db/add id
+                                     :transaction-item/balance new-balance]
+                                  [:db/add id
+                                   :transaction-item/index new-index]))
+        (assoc :last-balance new-balance)
+        (assoc :last-index new-index))))
+
 (defn transaction-item-balance-adjustments
   "Creates tx data necessary to adjust transaction item and account balances as the 
   result of the specified transaction item data. The return value is a tuple containing
@@ -131,29 +158,17 @@
                                            (:transaction-item/index before-item)
                                            -1N)
         index                             (+ before-index 1)
-        {:keys [last-balance item-adjs]} (reduce (fn [x {amount :transaction-item/amount
-                                                         action :transaction-item/action
-                                                         id :db/id}]
-                                                   (let [pol (polarizer account (resolve-action db action))
-                                                         adjustment (* pol amount)
-                                                         new-balance (+ (:last-balance x) adjustment)
-                                                         new-index (+ (:last-index x) 1)]
-                                                     (-> x
-                                                         (update :item-adjs #(conj % [:db/add id
-                                                                                      :transaction-item/balance new-balance]
-                                                                                   [:db/add id
-                                                                                    :transaction-item/index new-index]))
-                                                         (assoc :last-balance new-balance)
-                                                         (assoc :last-index new-index))))
-                                                 {:last-balance balance
+        {:keys [last-balance adj-items]} (reduce process-item
+                                                 {:db db
+                                                  :last-balance balance
                                                   :last-index index
-                                                  :item-adjs []}
+                                                  :adj-items []}
                                                  after-items)
         account-adjustment               (- last-balance (:account/balance account))
         account-adjs                     (cons [:db/add account-id :account/balance last-balance]
                                                (account-children-balance-adjustments db account account-adjustment))]
     [(assoc item :transaction-item/balance balance :transaction-item/index index)
-     (concat item-adjs account-adjs)]))
+     (concat adj-items account-adjs)]))
 
 (defn append-balance-adjustment-tx-data
   "Appends the datomic transaction commands necessary to adjust balances 
