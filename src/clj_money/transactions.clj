@@ -86,13 +86,13 @@
 
 (declare validate-transaction-data)
 
-(defn related-transaction-items
-  "For a given transaction item, return a tuple containing the item immediately
-  preceding the item in the 1st position and a sequence of all items that follow 
-  he item in the 2nd. Either of these values may be nil"
-  [db {account :transaction-item/account :as item} transaction-date]
-  [(ffirst (get-account-transaction-items db account min-date transaction-date {:sort-order :desc :inclusive? false}))
-   (mapv first (get-account-transaction-items db account transaction-date max-date {:sort-order :asc}))])
+(defn get-last-transaction-item-before
+  [db account-id transaction-date]
+  (ffirst (get-account-transaction-items db account-id min-date transaction-date {:sort-order :desc :inclusive? false})))
+
+(defn get-transaction-items-after
+  [db account-id transaction-date]
+  (mapv first (get-account-transaction-items db account-id transaction-date max-date {:sort-order :asc})))
 
 (defn resolve-action
   "Looks up a transaction item action from a db/id"
@@ -107,32 +107,59 @@
                 :account/children-balance (+ adj-amount (:account/children-balance %)))
        (rest (get-account-with-parents db account))))
 
-(defn process-item
-  "Given an item and a processing context, updates the context with the
-  tx data for the item including balances.
+(defn init-item-processing-context
+  "Creates the processing context for a given a transaction item and transaction date.
 
-  The context contains :db :last-balance :last-index and :adj-items"
+  The context includes :db :last-balance :last-index :adj-items."
 
-  [{:keys [last-balance last-index db]
-    :as context}
-   {amount              :transaction-item/amount
-    action              :transaction-item/action
-    {account-id :db/id} :transaction-item/account
-    id                  :db/id
-    :as                 item}]
+  [db {account-id :transaction-item/account} transaction-date]
 
-  (let [account     (find-account db account-id)
-        pol         (polarizer account (resolve-action db action))
-        adjustment  (* pol amount)
-        new-balance (+ last-balance adjustment)
-        new-index   (+ last-index 1)]
+  (let [{balance :transaction-item/balance
+         index   :transaction-item/index} (get-last-transaction-item-before db account-id transaction-date)]
+    {:db db
+     :last-balance (or balance 0M)
+     :last-index (or index -1N)
+     :adj-items []}))
+
+(defn process-current-item
+  [context db transaction-item]
+  (let [account    (->> transaction-item
+                        :transaction-item/account
+                        (find-account db))
+        pol        (polarizer account (:transaction-item/action transaction-item))
+        adjustment (* pol (:transaction-item/amount transaction-item))
+        balance (+ (:last-balance context) adjustment)
+        index (+ (:last-index context) 1N)]
     (-> context
-        (update :adj-items #(conj % [:db/add id
-                                     :transaction-item/balance new-balance]
-                                  [:db/add id
-                                   :transaction-item/index new-index]))
-        (assoc :last-balance new-balance)
-        (assoc :last-index new-index))))
+        (assoc :last-balance balance
+               :last-index index
+               :current-item (assoc transaction-item :transaction-item/balance balance
+                                    :transaction-item/index index)))))
+
+(defn process-after-items
+  [context db item transaction-date]
+  (let [account (find-account db (:transaction-item/account item))]
+    (reduce (fn [{:keys [last-balance last-index db]
+                  :as context}
+                 {amount              :transaction-item/amount
+                  action              :transaction-item/action
+                  {account-id :db/id} :transaction-item/account
+                  id                  :db/id
+                  :as                 item}]
+
+              (let [pol         (polarizer account (resolve-action db action))
+                    adjustment  (* pol amount)
+                    new-balance (+ last-balance adjustment)
+                    new-index   (+ last-index 1)]
+                (-> context
+                    (update :adj-items #(conj % [:db/add id
+                                                 :transaction-item/balance new-balance]
+                                              [:db/add id
+                                               :transaction-item/index new-index]))
+                    (assoc :last-balance new-balance)
+                    (assoc :last-index new-index))))
+            context
+            (get-transaction-items-after db (:db/id account) transaction-date))))
 
 (defn transaction-item-balance-adjustments
   "Creates tx data necessary to adjust transaction item and account balances as the 
@@ -145,30 +172,16 @@
        account-id :transaction-item/account
        :as item} transaction-date]
 
-  ; TODO Refactor out the redundancies between this let and the nested let
-  (let [account                          (find-account db account-id)
-        pol                              (polarizer account action)
-        adjustment                       (* pol amount)
-        [before-item after-items]        (related-transaction-items db item transaction-date)
-        before-balance                   (if before-item
-                                           (:transaction-item/balance before-item)
-                                           (bigdec 0))
-        balance                          (+ before-balance adjustment)
-        before-index                     (if before-item
-                                           (:transaction-item/index before-item)
-                                           -1N)
-        index                             (+ before-index 1)
-        {:keys [last-balance adj-items]} (reduce process-item
-                                                 {:db db
-                                                  :last-balance balance
-                                                  :last-index index
-                                                  :adj-items []}
-                                                 after-items)
-        account-adjustment               (- last-balance (:account/balance account))
-        account-adjs                     (cons [:db/add account-id :account/balance last-balance]
-                                               (account-children-balance-adjustments db account account-adjustment))]
-    [(assoc item :transaction-item/balance balance :transaction-item/index index)
-     (concat adj-items account-adjs)]))
+  (let [account             (find-account db account-id)
+        {:keys [current-item
+                last-balance
+                adj-items]} (-> (init-item-processing-context db item transaction-date)
+                                (process-current-item db item)
+                                (process-after-items db item transaction-date))
+        account-adjustment  (- last-balance (:account/balance account))
+        account-adjs        (cons [:db/add account-id :account/balance last-balance]
+                                  (account-children-balance-adjustments db account account-adjustment))]
+    [current-item (concat adj-items account-adjs)]))
 
 (defn append-balance-adjustment-tx-data
   "Appends the datomic transaction commands necessary to adjust balances 
