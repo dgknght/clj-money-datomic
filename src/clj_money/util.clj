@@ -42,6 +42,11 @@
   (pprint-with-caption "actual" actual)
   (pprint-with-caption "diff" (diff expected actual)))
 
+(defn pprint-and-return<
+  [obj msg]
+  (pprint-with-caption msg obj)
+  obj)
+
 (defn pprint-and-return
   [msg obj]
   (pprint-with-caption msg obj)
