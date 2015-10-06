@@ -112,38 +112,38 @@
 
   The context includes :db :last-balance :last-index :adj-items."
 
-  [db {account-id :transaction-item/account} transaction-date]
+  [db account-id transaction-date]
 
   (let [{balance :transaction-item/balance
          index   :transaction-item/index} (get-last-transaction-item-before db account-id transaction-date)]
     {:db db
      :last-balance (or balance 0M)
      :last-index (or index -1N)
+     :current-items []
      :adj-items []}))
 
-(defn process-current-item
-  [context db transaction-item]
-  (let [account    (->> transaction-item
-                        :transaction-item/account
-                        (find-account db))
-        pol        (polarizer account (:transaction-item/action transaction-item))
-        adjustment (* pol (:transaction-item/amount transaction-item))
-        balance (+ (:last-balance context) adjustment)
-        index (+ (:last-index context) 1N)]
-    (-> context
-        (assoc :last-balance balance
-               :last-index index
-               :current-item (assoc transaction-item :transaction-item/balance balance
-                                    :transaction-item/index index)))))
+(defn process-current-items
+  [context db account items]
+  (reduce (fn [c item]
+            (let [pol (polarizer account (:transaction-item/action item))
+                  adjustment (* pol (:transaction-item/amount item))
+                  balance (+ (:last-balance c) adjustment)
+                  index (+ (:last-index c) 1N)]
+              (-> c
+                  (update :current-items conj (assoc item :transaction-item/balance balance
+                                                      :transaction-item/index index))
+                  (assoc :last-balance balance
+                         :last-index index))))
+          context
+          items))
 
 (defn process-after-items
-  [context db item transaction-date]
-  (let [account (find-account db (:transaction-item/account item))]
+  [context db account-id transaction-date]
+  (let [account (find-account db account-id)]
     (reduce (fn [{:keys [last-balance last-index db]
                   :as context}
                  {amount              :transaction-item/amount
                   action              :transaction-item/action
-                  {account-id :db/id} :transaction-item/account
                   id                  :db/id
                   :as                 item}]
 
@@ -159,7 +159,7 @@
                     (assoc :last-balance new-balance)
                     (assoc :last-index new-index))))
             context
-            (get-transaction-items-after db (:db/id account) transaction-date))))
+            (get-transaction-items-after db account-id transaction-date))))
 
 (defn transaction-item-balance-adjustments
   "Creates tx data necessary to adjust transaction item and account balances as the 
@@ -167,33 +167,30 @@
   the original item data (with the balance attribute added) in the 1st position and a sequence
   of tx data to update the corresponding account balance (and any other affected transaction items)
   in the 2nd position."
-  [db {amount :transaction-item/amount
-       action :transaction-item/action
-       account-id :transaction-item/account
-       :as item} transaction-date]
+  [db account-id items transaction-date]
 
   (let [account             (find-account db account-id)
-        {:keys [current-item
+        {:keys [current-items
                 last-balance
-                adj-items]} (-> (init-item-processing-context db item transaction-date)
-                                (process-current-item db item)
-                                (process-after-items db item transaction-date))
+                adj-items]} (-> (init-item-processing-context db account-id transaction-date)
+                                (process-current-items db account items)
+                                (process-after-items db account-id transaction-date))
         account-adjustment  (- last-balance (:account/balance account))
         account-adjs        (cons [:db/add account-id :account/balance last-balance]
                                   (account-children-balance-adjustments db account account-adjustment))]
-    [current-item (concat adj-items account-adjs)]))
+    [current-items (concat adj-items account-adjs)]))
 
 (defn append-balance-adjustment-tx-data
   "Appends the datomic transaction commands necessary to adjust balances 
   for the transaction"
   [db {items :transaction/items transaction-date :transaction/date :as transaction}]
-  (let [final-result (reduce (fn [result item]
-                               (let [[adj-item adjustments] (transaction-item-balance-adjustments db item transaction-date)]
+  (let [final-result (reduce (fn [result [account-id items]]
+                               (let [[adj-items adjustments] (transaction-item-balance-adjustments db account-id items transaction-date)]
                                  (-> result
-                                     (update :items conj adj-item)
+                                     (update :items concat adj-items)
                                      (update :adjustments concat adjustments))))
                              {:items [] :adjustments []}
-                             items)]
+                             (group-by :transaction-item/account items))]
     (cons (assoc transaction :transaction/items (:items final-result))
           (:adjustments final-result))))
 
