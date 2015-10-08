@@ -14,6 +14,17 @@
                     :account/type :account.type/income}
                    {:account/name "Groceries"
                     :account/type :account.type/expense}
+                   {:account/name "Taxes"
+                    :account/type :account.type/expense}
+                   {:account/name "Federal"
+                    :account/type :account.type/expense
+                    :account/parent "Taxes"}
+                   {:account/name "Social security"
+                    :account/type :account.type/expense
+                    :account/parent "Taxes"}
+                   {:account/name "Medicare"
+                    :account/type :account.type/expense
+                    :account/parent "Taxes"}
                    {:account/name "Opening balances"
                     :account/type :account.type/equity}
                    {:account/name "Credit card"
@@ -512,4 +523,25 @@
                     {:transaction/date #inst "2015-01-01"
                      :transaction-item/amount (bigdec 1000)
                      :transaction-item/balance (bigdec 1000)}]]
-      (is (= expected actual)))))
+      (is (= expected actual)))
+    (testing "A transaction with multiple items referencing children of the same account is handled correctly"
+      (let [conn (new-test-db)
+            _ (add-transaction conn {:transaction/date #inst "2015-01-01"
+                                     :transaction/description "Paycheck"
+                                     :transaction/items [{:transaction-item/action :transaction-item.action/credit
+                                                          :transaction-item/account "Salary"
+                                                          :transaction-item/amount (bigdec 1000)}
+                                                         {:transaction-item/action :transaction-item.action/debit
+                                                          :transaction-item/account "Taxes/Federal"
+                                                          :transaction-item/amount (bigdec 150)}
+                                                         {:transaction-item/action :transaction-item.action/debit
+                                                          :transaction-item/account "Taxes/Social security"
+                                                          :transaction-item/amount (bigdec 62)}
+                                                         {:transaction-item/action :transaction-item.action/debit
+                                                          :transaction-item/account "Taxes/Medicare"
+                                                          :transaction-item/amount (bigdec 14.50)}
+                                                         {:transaction-item/action :transaction-item.action/debit
+                                                          :transaction-item/account "Checking"
+                                                          :transaction-item/amount (bigdec 773.50)}]})
+            children-balance (:account/children-balance (find-account (d/db conn) "Taxes"))]
+        (is (= 226.50 children-balance))))))
