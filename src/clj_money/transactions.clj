@@ -99,14 +99,6 @@
   [db action]
   (get-ident db (:db/id action)))
 
-(defn account-children-balance-adjustments
-  "Given an account and an adjustment amount, returns transaction data
-  for the application of the adjustment amount up the parent chain"
-  [db account adj-amount]
-  (map #(vector :db/add (:db/id %)
-                :account/children-balance (+ adj-amount (:account/children-balance %)))
-       (rest (get-account-with-parents db account))))
-
 (defn init-item-processing-context
   "Creates the processing context for a given a transaction item and transaction date.
 
@@ -162,13 +154,12 @@
             (get-transaction-items-after db account-id transaction-date))))
 
 (defn transaction-item-balance-adjustments
-  "Creates tx data necessary to adjust transaction item and account balances as the 
-  result of the specified transaction item data. The return value is a tuple containing
-  the original item data (with the balance attribute added) in the 1st position and a sequence
-  of tx data to update the corresponding account balance (and any other affected transaction items)
-  in the 2nd position."
+  "Given a transaction item, account-id, and transaction date, returns a map
+  containing:
+  :items - the original items with balance and index appended
+  :adjusted-items - adjustments to index and balance of all affected existing transaction items
+  :account-deltas - the change to be applied to the account and its parents to update the balances"
   [db account-id items transaction-date]
-
   (let [account             (find-account db account-id)
         {:keys [current-items
                 last-balance
@@ -176,23 +167,53 @@
                                 (process-current-items db account items)
                                 (process-after-items db account-id transaction-date))
         account-adjustment  (- last-balance (:account/balance account))
-        account-adjs        (cons [:db/add account-id :account/balance last-balance]
-                                  (account-children-balance-adjustments db account account-adjustment))]
-    [current-items (concat adj-items account-adjs)]))
+        adjusted-account    [:db/add account-id :account/balance last-balance]
+        account-deltas      (map #(vector % account-adjustment) (rest (get-account-with-parents db account)))]
+    {:current-items current-items
+     :adjusted-items adj-items
+     :adjusted-account adjusted-account
+     :account-deltas account-deltas}))
+
+(defn transaction-item-group-adjustments
+  [context [account-id items]]
+  (let [{:keys [current-items
+                adjusted-items
+                adjusted-account
+                account-deltas]} (transaction-item-balance-adjustments (:db context)
+                                                                       account-id
+                                                                       items
+                                                                       (:transaction-date context))]
+    (-> context
+        (update :current-items concat current-items)
+        (update :adjusted-items concat adjusted-items)
+        (update :adjusted-accounts conj adjusted-account)
+        (update :account-deltas concat account-deltas))))
 
 (defn append-balance-adjustment-tx-data
   "Appends the datomic transaction commands necessary to adjust balances 
   for the transaction"
   [db {items :transaction/items transaction-date :transaction/date :as transaction}]
-  (let [final-result (reduce (fn [result [account-id items]]
-                               (let [[adj-items adjustments] (transaction-item-balance-adjustments db account-id items transaction-date)]
-                                 (-> result
-                                     (update :items concat adj-items)
-                                     (update :adjustments concat adjustments))))
-                             {:items [] :adjustments []}
-                             (group-by :transaction-item/account items))]
-    (cons (assoc transaction :transaction/items (:items final-result))
-          (:adjustments final-result))))
+  (let [final-result (reduce transaction-item-group-adjustments
+                             {:db db
+                              :current-items []
+                              :adjusted-items []
+                              :adjusted-accounts []
+                              :account-deltas []
+                              :transaction-date transaction-date}
+                             (group-by :transaction-item/account items))
+        account-adjustments (->> final-result
+                                 :account-deltas
+                                 (reduce (fn [acc [account delta]]
+                                           (if (contains? acc account)
+                                             (update acc account + delta)
+                                             (assoc acc account delta)))
+                                         {})
+                                 (map (fn [[account adjustment]]
+                                        [:db/add (:db/id account)
+                                         :account/children-balance (+ (:account/children-balance account) adjustment)])))
+        all-adjustments (concat (:adjusted-items final-result) (:adjusted-accounts final-result) account-adjustments)]
+    (cons (assoc transaction :transaction/items (:current-items final-result))
+          all-adjustments)))
 
 (defn resolve-transaction-item-data
   "Resolves references inside transaction item data"
