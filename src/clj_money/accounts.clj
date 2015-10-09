@@ -2,6 +2,7 @@
   (:require [datomic.api :as d :refer [transact q db]]
             [clojure.string :as str]
             [clj-money.common :as m :refer :all]
+            [clj-money.util :refer [pprint-with-caption]]
             [clojure.tools.logging :as log])
   (:gen-class))
 
@@ -10,6 +11,8 @@
 (defn find-account
   [db account-id]
   (let [entity (d/entity db account-id)]
+    (when-not entity
+      (throw (ex-info "No such account" {:db/id account-id})))
     (d/touch entity)))
 
 (defn left-side?
