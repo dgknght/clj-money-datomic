@@ -543,5 +543,5 @@
                                                          {:transaction-item/action :transaction-item.action/debit
                                                           :transaction-item/account "Checking"
                                                           :transaction-item/amount (bigdec 773.50)}]})
-            children-balance (:account/children-balance (find-account (d/db conn) "Taxes"))]
-        (is (= 226.50 children-balance))))))
+            children-balance (:account/children-balance (resolve-account (d/db conn) "Taxes"))]
+        (is (= (bigdec 226.50) children-balance))))))
