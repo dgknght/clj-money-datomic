@@ -189,6 +189,18 @@
         (update :adjusted-accounts conj adjusted-account)
         (update :account-deltas concat account-deltas))))
 
+(defn finalize-account-adjustments
+  [account-deltas]
+  (->> account-deltas
+       (reduce (fn [acc [account delta]]
+                 (if (contains? acc account)
+                   (update acc account + delta)
+                   (assoc acc account delta)))
+               {})
+       (map (fn [[account adjustment]]
+              [:db/add (:db/id account)
+               :account/children-balance (+ (:account/children-balance account) adjustment)]))))
+
 (defn append-balance-adjustment-tx-data
   "Appends the datomic transaction commands necessary to adjust balances 
   for the transaction"
@@ -201,16 +213,7 @@
                               :account-deltas []
                               :transaction-date transaction-date}
                              (group-by :transaction-item/account items))
-        account-adjustments (->> final-result
-                                 :account-deltas
-                                 (reduce (fn [acc [account delta]]
-                                           (if (contains? acc account)
-                                             (update acc account + delta)
-                                             (assoc acc account delta)))
-                                         {})
-                                 (map (fn [[account adjustment]]
-                                        [:db/add (:db/id account)
-                                         :account/children-balance (+ (:account/children-balance account) adjustment)])))
+        account-adjustments (-> final-result :account-deltas finalize-account-adjustments)
         all-adjustments (concat (:adjusted-items final-result) (:adjusted-accounts final-result) account-adjustments)]
     (cons (assoc transaction :transaction/items (:current-items final-result))
           all-adjustments)))
