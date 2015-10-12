@@ -295,7 +295,7 @@
 (defn resolve-transaction-items-enums
   "Looks up references in a list of transaction items"
   [db items]
-  (map #(resolve-transaction-item-enums db %) items))
+  (mapv #(resolve-transaction-item-enums db %) items))
 
 (defn resolve-transaction-enums
   "Looks up references in transaction map"
