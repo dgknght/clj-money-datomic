@@ -545,3 +545,25 @@
                                                           :transaction-item/amount 773.50M}]})
             children-balance (:account/children-balance (resolve-account (d/db conn) "Taxes"))]
         (is (= 226.50M children-balance))))))
+
+(deftest update-a-transaction
+  (testing "When a transaction item amount is updated, the corresponding account balance is updated"
+    (let [conn (new-test-db)
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
+                                          :transaction/description "Paycheck"
+                                          :amount 1000M
+                                          :debit-account "Checking"
+                                          :credit-account "Salary"})
+          checking-before (resolve-account (d/db conn) "Checking")
+          tx (first (get-transactions (d/db conn)))
+          updated-tx (-> tx
+                         (assoc-in [:transaction/items 0 :transaction-item/amount] 1100M)
+                         (assoc-in [:transaction/items 1 :transaction-item/amount] 1100M))
+          _ (update-transaction conn updated-tx)
+          checking (resolve-account (d/db conn) "Checking")
+          salary (resolve-account (d/db conn) "Salary")]
+      (is (= 1100M (:account/balance checking)))
+      (is (= 1100M (:account/balance salary)))))
+  (testing "When a transaction item amount is updated, following transaction item balances are updated" (is false))
+  (testing "When a transaction item account is updated, balances are adjusted for the old account and the new account" (is false))
+  (testing "When a transaction date is updated, all transaction item indexes are updated" (is false)))

@@ -19,7 +19,7 @@
   "Returns true if the account is on the left side of the A = L + E equation. I.e., if it's an asset or an expense."
   [{account-type :account/type :as account}]
   (when-not account-type
-    (throw (ex-info (str "Unable to determine whether or not the account is left side of the equation." {:account account}))))
+    (throw (ex-info (str "Unable to determine whether or not the account is left side of the equation.") {:account account})))
   (contains?
     #{:account.type/asset :account.type/expense}
     account-type))
@@ -159,6 +159,7 @@
   [db token]
   (cond (string? token) (find-account-by-path db token)
         (integer? token) (d/entity db token)
+        (and (map? token) (= [:db/id] (keys token))) (d/entity db (:db/id token))
         :else token))
 
 (defn get-account-with-parents
