@@ -31,7 +31,7 @@
   (testing "When I add an item to a budget, it should appear in the budget items attribute"
     (let [conn (prepare-db)
           _ (add-budget conn "2015" #inst "2015-01-01")
-          _ (add-budget-item conn "2015" "Groceries" (repeat 12 (bigdec 300)))
+          _ (add-budget-item conn "2015" "Groceries" (repeat 12 300M))
           first-item (-> conn
                          d/db
                          (find-budget-by-name "2015")
@@ -50,8 +50,8 @@
   (testing "If I add a budget item for an account that already has a budget item, a new item is not created"
     (let [conn (prepare-db)
           _ (add-budget conn "2015" #inst "2015-01-01")
-          _ (add-budget-item conn "2015" "Groceries" (repeat 12 (bigdec 100)))
-          _ (add-budget-item conn "2015" "Groceries" (repeat 12 (bigdec 300)))
+          _ (add-budget-item conn "2015" "Groceries" (repeat 12 100M))
+          _ (add-budget-item conn "2015" "Groceries" (repeat 12 300M))
           item-count (-> conn
                          d/db
                          (find-budget-by-name "2015")
@@ -61,8 +61,8 @@
   (testing "If I add a budget item for an account that already has a budget item, the budget values are overwritten"
     (let [conn (prepare-db)
           _ (add-budget conn "2015" #inst "2015-01-01")
-          _ (add-budget-item conn "2015" "Groceries" (repeat 12 (bigdec 100)))
-          _ (add-budget-item conn "2015" "Groceries" (repeat 12 (bigdec 300)))
+          _ (add-budget-item conn "2015" "Groceries" (repeat 12 100M))
+          _ (add-budget-item conn "2015" "Groceries" (repeat 12 300M))
           first-item (-> conn
                          d/db
                          (find-budget-by-name "2015")
@@ -85,9 +85,9 @@
   (testing "Given a budget, and account, and a number of periods, I can get a budget amount"
     (let [conn (prepare-db)
           _ (add-budget conn "2015" #inst "2015-01-01")
-          _ (add-budget-item conn "2015" "Groceries" (repeat 12 (bigdec 100)))
+          _ (add-budget-item conn "2015" "Groceries" (repeat 12 100M))
           budget-amount (get-budget-amount (d/db conn) "2015" "Groceries" 3)]
-      (is (= (bigdec 300) budget-amount)))))
+      (is (= 300M budget-amount)))))
 
 (deftest get-a-budget-from-a-date
   (testing "Given a date, I can get the budget that includes that date"
@@ -102,8 +102,8 @@
   (testing "Given a budget item, I can get the budget period"
     (let [conn (prepare-db)
           _ (add-budget conn "2015" #inst "2015-01-01")
-          _ (add-budget-item conn "2015" "Groceries" (take 12 (iterate (partial + (bigdec 100)) (bigdec 100))))
+          _ (add-budget-item conn "2015" "Groceries" (take 12 (iterate (partial + 100M) 100M)))
           budget-item-period (-> conn
                                  d/db
                                  (find-budget-item-period "2015" "Groceries" #inst "2015-03-02"))]
-      (is (= (bigdec 300) (:budget-item-period/amount budget-item-period))))))
+      (is (= 300M (:budget-item-period/amount budget-item-period))))))

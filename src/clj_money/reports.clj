@@ -209,7 +209,7 @@
 (defn append-analysis
   [{:keys [budget value] :as display-record} periods]
   (let [difference (- value budget)
-        percent-difference (if-not (= budget (bigdec 0))
+        percent-difference (if-not (= budget 0M)
                              (with-precision 3 (/ difference budget)))
         actual-per-month (with-precision 2  (/ value periods))]
     (assoc display-record :difference difference
@@ -225,7 +225,7 @@
          (filter #(#{:account.type/income :account.type/expense} (:account-type %)))
          (map #(set-balance db budget-start budget-end  %))
          (map #(append-budget-amount db budget periods %))
-         (remove (fn [{:keys [value budget]}] (= (bigdec 0) value budget)))
+         (remove (fn [{:keys [value budget]}] (= 0M value budget)))
          (map #(append-analysis % periods))
          (interleave-summaries {:account-types [:account.type/income :account.type/expense]
                                 :keys-to-sum [:value :budget]

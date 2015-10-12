@@ -51,16 +51,16 @@
                               :transaction/description "Paycheck"
                               :transaction/items [{:transaction-item/action :transaction-item.action/debit
                                                    :transaction-item/account "Checking"
-                                                   :transaction-item/amount (bigdec 1000)}
+                                                   :transaction-item/amount 1000M}
                                                   {:transaction-item/action :transaction-item.action/credit
                                                    :transaction-item/account "Salary"
-                                                   :transaction-item/amount (bigdec 1000)}]})
+                                                   :transaction-item/amount 1000M}]})
           transactions (get-transactions (d/db conn))
           transaction (first transactions)]
       (is (= 1 (count transactions)))
       (is (= #inst "2014-12-15" (:transaction/date transaction)))
       (is (= "Paycheck" (:transaction/description transaction)))
-      (is (= (bigdec 1000) (-> transaction :transaction/items first :transaction-item/amount)))
+      (is (= 1000M (-> transaction :transaction/items first :transaction-item/amount)))
       (is (= :transaction-item.action/debit (-> transaction :transaction/items first :transaction-item/action)))
       (is (= :transaction-item.action/credit (-> transaction :transaction/items second :transaction-item/action)))))
   (testing "An ID is returned that can be used to retrieve the transaction"
@@ -70,10 +70,10 @@
                                :transaction/description "Paycheck"
                                :transaction/items [{:transaction-item/action :transaction-item.action/debit
                                                     :transaction-item/account "Checking"
-                                                    :transaction-item/amount (bigdec 1000)}
+                                                    :transaction-item/amount 1000M}
                                                    {:transaction-item/action :transaction-item.action/credit
                                                     :transaction-item/account "Salary"
-                                                    :transaction-item/amount (bigdec 1000)}]})
+                                                    :transaction-item/amount 1000M}]})
           transaction (get-transaction (d/db conn) id)]
       (is (= "Paycheck" (:transaction/description transaction))))))
 
@@ -86,10 +86,10 @@
                                               :transaction/description "Paycheck"
                                               :transaction/items [{:transaction-item/action :transaction-item.action/debit
                                                                    :transaction-item/account "Checking"
-                                                                   :transaction-item/amount (bigdec 1000)}
+                                                                   :transaction-item/amount 1000M}
                                                                   {:transaction-item/action :transaction-item.action/credit
                                                                    :transaction-item/account "Salary"
-                                                                   :transaction-item/amount (bigdec 500)}]}))))))
+                                                                   :transaction-item/amount 500M}]}))))))
 
 (deftest add-a-simple-transaction
   (testing "Adding a simple transaction creates a full transaction"
@@ -99,7 +99,7 @@
           salary (find-account-id-by-path db "Salary")
           id (add-simple-transaction conn {:transaction/date #inst "2014-02-27"
                                            :transaction/description "Paycheck"
-                                           :amount (bigdec 1000)
+                                           :amount 1000M
                                            :credit-account salary
                                            :debit-account checking})
           db (d/db conn)
@@ -112,12 +112,12 @@
           salary (find-account-id-by-path db "Salary")
           _ (add-simple-transaction conn {:transaction/date #inst "2014-02-27"
                                           :transaction/description "Paycheck"
-                                          :amount (bigdec 1000)
+                                          :amount 1000M
                                           :credit-account salary
                                           :debit-account checking})
           db (d/db conn)
           balances (map #(get-balance db %) [checking salary])]
-      (is (= [(bigdec 1000) (bigdec 1000)] balances)))))
+      (is (= [1000M 1000M] balances)))))
 
 (defn calculate-account-balance-setup
   "Add transaction for calculate-account-balance tests"
@@ -129,22 +129,22 @@
         groceries (find-account-id-by-path db "Groceries")]
     (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
                                   :transaction/description "Paycheck"
-                                  :amount (bigdec 1000)
+                                  :amount 1000M
                                   :debit-account checking
                                   :credit-account salary})
     (add-simple-transaction conn {:transaction/date #inst "2015-01-04"
                                   :transaction/description "Kroger"
-                                  :amount (bigdec 100)
+                                  :amount 100M
                                   :debit-account groceries
                                   :credit-account checking})
     (add-simple-transaction conn {:transaction/date #inst "2015-01-11"
                                   :transaction/description "Kroger"
-                                  :amount (bigdec 100)
+                                  :amount 100M
                                   :debit-account groceries
                                   :credit-account checking})
     (add-simple-transaction conn {:transaction/date #inst "2015-01-12"
                                   :transaction/description "Kroger"
-                                  :amount (bigdec 10)
+                                  :amount 10M
                                   :debit-account checking
                                   :credit-account groceries})
     {:checking checking :salary salary :groceries groceries}))
@@ -154,7 +154,7 @@
     (let [conn (create-empty-db)
           accounts (calculate-account-balance-setup conn)
           balance (calculate-account-balance (d/db conn) (:checking accounts) #inst "2014-12-31")]
-      (is (= (bigdec 0) balance))))
+      (is (= 0M balance))))
   (testing "The balance includes transactions that happen before the specified date"
     (let [conn (create-empty-db)
           accounts (calculate-account-balance-setup conn)
@@ -162,10 +162,10 @@
           balance-01-04 (calculate-account-balance (d/db conn) (:checking accounts) #inst "2015-01-04")
           balance-01-11 (calculate-account-balance (d/db conn) (:checking accounts) #inst "2015-01-11")
           balance-12-31 (calculate-account-balance (d/db conn) (:checking accounts) #inst "2015-12-31")]
-      (is (= (bigdec 1000) balance-01-01))
-      (is (= (bigdec 900) balance-01-04))
-      (is (= (bigdec 800) balance-01-11))
-      (is (= (bigdec 810) balance-12-31)))))
+      (is (= 1000M balance-01-01))
+      (is (= 900M balance-01-04))
+      (is (= 800M balance-01-11))
+      (is (= 810M balance-12-31)))))
 
 (defn create-update-test-transaction
   "Creates a transaction used in the update tests"
@@ -175,10 +175,10 @@
   (add-transaction conn {:transaction/date #inst "2015-01-01"
                          :transaction/description "Not the right description"
                          :transaction/items [{:transaction-item/account "Checking"
-                                              :transaction-item/amount (bigdec 1000)
+                                              :transaction-item/amount 1000M
                                               :transaction-item/action :transaction-item.action/debit}
                                              {:transaction-item/account "Salary"
-                                              :transaction-item/amount (bigdec 1000)
+                                              :transaction-item/amount 1000M
                                               :transaction-item/action :transaction-item.action/credit}]}))
 
 (deftest update-a-transaction
@@ -212,22 +212,22 @@
         _ (add-account conn {:account/name "Rent" :account/type :account.type/expense})
         _ (add-simple-transaction conn {:transaction/date #inst "2015-09-02"
                                         :transaction/description "Rent"
-                                        :amount (bigdec 450)
+                                        :amount 450M
                                         :debit-account "Rent"
                                         :credit-account "Checking"})
         _ (add-simple-transaction conn {:transaction/date #inst "2015-09-01"
                                         :transaction/description "Paycheck"
-                                        :amount (bigdec 1000)
+                                        :amount 1000M
                                         :debit-account "Checking"
                                         :credit-account "Salary"})
         _ (add-simple-transaction conn {:transaction/date #inst "2015-09-15"
                                         :transaction/description "Paycheck"
-                                        :amount (bigdec 1000)
+                                        :amount 1000M
                                         :debit-account "Checking"
                                         :credit-account "Salary"})
         _ (add-simple-transaction conn {:transaction/date #inst "2015-08-15"
                                         :transaction/description "Paycheck"
-                                        :amount (bigdec 1000)
+                                        :amount 1000M
                                         :debit-account "Checking"
                                         :credit-account "Salary"})
         checking-id (resolve-account-id (d/db conn) "Checking")
@@ -265,149 +265,149 @@
     (let [conn (new-test-db)
           _ (add-simple-transaction conn {:transaction/description "Paycheck"
                                           :transaction/date (now)
-                                          :amount (bigdec 100)
+                                          :amount 100M
                                           :debit-account "Checking"
                                           :credit-account "Salary"})
           balance (get-balance (d/db conn) "Checking")]
-      (is (= (bigdec 100) balance))))
+      (is (= 100M balance))))
   (testing "Debiting an expense account increases the balance"
     (let [conn (new-test-db)
           _ (add-simple-transaction conn {:transaction/description "Kroger"
                                           :transaction/date (now)
-                                          :amount (bigdec 101)
+                                          :amount 101M
                                           :debit-account "Groceries"
                                           :credit-account "Checking"})
           balance (get-balance (d/db conn) "Groceries")]
-      (is (= (bigdec 101) balance))))
+      (is (= 101M balance))))
   (testing "Debiting a liability account decreases the balance"
     (let [conn (new-test-db)
           _ (add-simple-transaction conn {:transaction/description "Pay credit card bill"
                                           :transaction/date (now)
-                                          :amount (bigdec 102)
+                                          :amount 102M
                                           :debit-account "Credit card"
                                           :credit-account "Checking"})
           balance (get-balance (d/db conn) "Credit card")]
-      (is (= (bigdec -102) balance))))
+      (is (= -102M balance))))
   (testing "Debiting an equity account decreases the balance"
     (let [conn (new-test-db)
           _ (add-simple-transaction conn {:transaction/description "Credit card opening balances"
                                           :transaction/date (now)
-                                          :amount (bigdec 103)
+                                          :amount 103M
                                           :debit-account "Opening balances"
                                           :credit-account "Credit card"})
           balance (get-balance (d/db conn) "Opening balances")]
-      (is (= (bigdec -103) balance))))
+      (is (= -103M balance))))
   (testing "Debiting an income account decreases the balance"
     (let [conn (new-test-db)
           _ (add-simple-transaction conn {:transaction/description "Had to give back some salary for bad behavior"
                                           :transaction/date (now)
-                                          :amount (bigdec 104)
+                                          :amount 104M
                                           :debit-account "Salary"
                                           :credit-account "Checking"})
           balance (get-balance (d/db conn) "Salary")]
-      (is (= (bigdec -104) balance)))))
+      (is (= -104M balance)))))
 
 (deftest credit-calculations 
   (testing "Crediting an asset account decreases the balance"
     (let [conn (new-test-db)
           _ (add-simple-transaction conn {:transaction/description "Kroger"
                                           :transaction/date (now)
-                                          :amount (bigdec 105)
+                                          :amount 105M
                                           :debit-account "Groceries"
                                           :credit-account "Checking"})
           balance (get-balance (d/db conn) "Checking")]
-      (is (= (bigdec -105) balance))))
+      (is (= -105M balance))))
   (testing "Crediting an expense account decreases the balance"
     (let [conn (new-test-db)
           _ (add-simple-transaction conn {:transaction/description "Kroger refund for bad milk"
                                           :transaction/date (now)
-                                          :amount (bigdec 106)
+                                          :amount 106M
                                           :debit-account "Checking"
                                           :credit-account "Groceries"})
           balance (get-balance (d/db conn) "Groceries")]
-      (is (= (bigdec -106) balance))))
+      (is (= -106M balance))))
   (testing "Crediting a liability account increases the balance"
     (let [conn (new-test-db)
           _ (add-simple-transaction conn {:transaction/description "Kroger"
                                           :transaction/date (now)
-                                          :amount (bigdec 107)
+                                          :amount 107M
                                           :debit-account "Groceries"
                                           :credit-account "Credit card"})
           balance (get-balance (d/db conn) "Credit card")]
-        (is (= (bigdec 107) balance))))
+        (is (= 107M balance))))
     (testing "Crediting an equity account increases the balance"
       (let [conn (new-test-db)
             _ (add-simple-transaction conn {:transaction/description "Checking opening balance"
                                             :transaction/date (now)
-                                            :amount (bigdec 108)
+                                            :amount 108M
                                             :debit-account "Checking"
                                             :credit-account "Opening balances"})
             balance (get-balance (d/db conn) "Opening balances")]
-        (is (= (bigdec 108) balance))))
+        (is (= 108M balance))))
     (testing "Crediting an income account increases the balance"
       (let [conn (new-test-db)
             _ (add-simple-transaction conn {:transaction/description "Paycheck"
                                             :transaction/date (now)
-                                            :amount (bigdec 109)
+                                            :amount 109M
                                             :debit-account "Checking"
                                             :credit-account "Salary"})
             balance (get-balance (d/db conn) "Salary")]
-        (is (= (bigdec 109) balance)))))
+        (is (= 109M balance)))))
 
 (deftest transaction-balance-chain
   (testing "The balance for the first transaction item for an account is the same as its polarized amount"
     (let [conn (new-test-db)
           _ (add-simple-transaction conn {:transaction/date #inst "2015-09-01"
                                           :transaction/description "Paycheck"
-                                          :amount (bigdec 1000)
+                                          :amount 1000M
                                           :debit-account "Checking"
                                           :credit-account "Salary"})
           checking (resolve-account (d/db conn) "Checking")
           [transaction-item transaction] (first (get-account-transaction-items (d/db conn) (:db/id checking)))]
-      (is (= (bigdec 1000) (:transaction-item/balance transaction-item)))))
+      (is (= 1000M (:transaction-item/balance transaction-item)))))
   (testing "The transaction item balance is the sum of the polarized amount for the item and the previous transaction item balance"
     (let [conn (new-test-db)
           _ (add-simple-transaction conn {:transaction/date #inst "2015-09-01"
                                           :transaction/description "Paycheck"
-                                          :amount (bigdec 1000)
+                                          :amount 1000M
                                           :debit-account "Checking"
                                           :credit-account "Salary"})
           _ (add-simple-transaction conn {:transaction/date #inst "2015-09-02"
                                           :transaction/description "Kroger"
-                                          :amount (bigdec 150)
+                                          :amount 150M
                                           :debit-account "Groceries"
                                           :credit-account "Checking"})
           checking (resolve-account (d/db conn) "Checking")
           [transaction-item transaction] (first (get-account-transaction-items (d/db conn) (:db/id checking)))]
-      (is (= (bigdec 150) (:transaction-item/amount transaction-item)))
-      (is (= (bigdec 850) (:transaction-item/balance transaction-item)))))
+      (is (= 150M (:transaction-item/amount transaction-item)))
+      (is (= 850M (:transaction-item/balance transaction-item)))))
   (testing "Adding a transaction before other transactions causes the following transactions' balances to be updated"
     (let [conn (new-test-db)
           _ (add-simple-transaction conn {:transaction/date #inst "2015-09-15"
                                           :transaction/description "Paycheck"
-                                          :amount (bigdec 1000)
+                                          :amount 1000M
                                           :debit-account "Checking"
                                           :credit-account "Salary"})
           _ (add-simple-transaction conn {:transaction/date #inst "2015-09-16"
                                           :transaction/description "Kroger"
-                                          :amount (bigdec 100)
+                                          :amount 100M
                                           :debit-account "Groceries"
                                           :credit-account "Checking"})
           checking-id (resolve-account-id (d/db conn) "Checking")
           before (get-account-transaction-items (d/db conn) checking-id)
           _ (add-simple-transaction conn {:transaction/date #inst "2015-09-01"
                                           :transaction/description "Paycheck"
-                                          :amount (bigdec 1000)
+                                          :amount 1000M
                                           :debit-account "Checking"
                                           :credit-account "Salary"})
           after (get-account-transaction-items (d/db conn) checking-id)]
-      (is (= [[#inst "2015-09-16" (bigdec 900)]
-              [#inst "2015-09-15" (bigdec 1000)]]
+      (is (= [[#inst "2015-09-16" 900M]
+              [#inst "2015-09-15" 1000M]]
              (map #(vector (-> % second :transaction/date)
                            (-> % first :transaction-item/balance)) before)))
-      (is (= [[#inst "2015-09-16" (bigdec 1900)]
-              [#inst "2015-09-15" (bigdec 2000)]
-              [#inst "2015-09-01" (bigdec 1000)]]
+      (is (= [[#inst "2015-09-16" 1900M]
+              [#inst "2015-09-15" 2000M]
+              [#inst "2015-09-01" 1000M]]
              (map #(vector (-> % second :transaction/date)
                            (-> % first :transaction-item/balance)) after))))))
 
@@ -416,12 +416,12 @@
     (let [conn (new-test-db)
           _ (add-simple-transaction conn {:transaction/date #inst "2015-09-01"
                                           :transaction/description "Paycheck"
-                                          :amount (bigdec 1000)
+                                          :amount 1000M
                                           :debit-account "Checking"
                                           :credit-account "Salary"})
           _ (add-simple-transaction conn {:transaction/date #inst "2015-09-02"
                                           :transaction/description "Kroger"
-                                          :amount (bigdec 100)
+                                          :amount 100M
                                           :debit-account "Groceries"
                                           :credit-account "Checking"})
           account (resolve-account (d/db conn) "Checking")
@@ -436,22 +436,22 @@
     (let [conn (new-test-db)
           _ (add-simple-transaction conn {:transaction/date #inst "2015-09-02"
                                           :transaction/description "Kroger"
-                                          :amount (bigdec 100)
+                                          :amount 100M
                                           :debit-account "Groceries"
                                           :credit-account "Checking"})
           _ (add-simple-transaction conn {:transaction/date #inst "2015-09-01"
                                           :transaction/description "Paycheck"
-                                          :amount (bigdec 1000)
+                                          :amount 1000M
                                           :debit-account "Checking"
                                           :credit-account "Salary"})
           account (resolve-account (d/db conn) "Checking")
           items (get-account-transaction-items (d/db conn) (:db/id account))
           expected [{:transaction-item/index 1
                      :transaction/date #inst "2015-09-02"
-                     :transaction-item/balance (bigdec 900)}
+                     :transaction-item/balance 900M}
                     {:transaction-item/index 0
                      :transaction/date #inst "2015-09-01"
-                     :transaction-item/balance (bigdec 1000)}]
+                     :transaction-item/balance 1000M}]
           actual (map (fn [[i t]]
                         (merge (select-keys i [:transaction-item/index :transaction-item/balance])
                                (select-keys t [:transaction/date])))
@@ -462,22 +462,22 @@
     (let [conn (new-test-db)
           _ (add-simple-transaction conn {:transaction/date #inst "2015-09-01"
                                           :transaction/description "Kroger"
-                                          :amount (bigdec 100)
+                                          :amount 100M
                                           :debit-account "Groceries"
                                           :credit-account "Checking"})
           _ (add-simple-transaction conn {:transaction/date #inst "2015-09-01"
                                           :transaction/description "Paycheck"
-                                          :amount (bigdec 1000)
+                                          :amount 1000M
                                           :debit-account "Checking"
                                           :credit-account "Salary"})
           account (resolve-account (d/db conn) "Checking")
           items (get-account-transaction-items (d/db conn) (:db/id account))
           expected [{:transaction-item/index 1
                      :transaction/date #inst "2015-09-01"
-                     :transaction-item/balance (bigdec 900)}
+                     :transaction-item/balance 900M}
                     {:transaction-item/index 0
                      :transaction/date #inst "2015-09-01"
-                     :transaction-item/balance (bigdec 1000)}]
+                     :transaction-item/balance 1000M}]
           actual (map (fn [[i t]]
                         (merge (select-keys i [:transaction-item/index :transaction-item/balance])
                                (select-keys t [:transaction/date])))
@@ -488,41 +488,41 @@
     (let [conn (new-test-db)
           _ (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
                                           :transaction/description "Paycheck"
-                                          :amount (bigdec 1000)
+                                          :amount 1000M
                                           :credit-account "Salary"
                                           :debit-account "Checking"})
           _ (add-simple-transaction conn {:transaction/date #inst "2015-02-01"
                                           :transaction/description "Paycheck"
-                                          :amount (bigdec 1000)
+                                          :amount 1000M
                                           :credit-account "Salary"
                                           :debit-account "Checking"})
           _ (add-transaction conn {:transaction/date #inst "2015-01-15"
                                    :transaction/description "Paycheck with bonus"
                                    :transaction/items [{:transaction-item/action :transaction-item.action/credit
                                                         :transaction-item/account "Salary"
-                                                        :transaction-item/amount (bigdec 1000)}
+                                                        :transaction-item/amount 1000M}
                                                        {:transaction-item/action :transaction-item.action/credit
                                                         :transaction-item/account "Salary"
-                                                        :transaction-item/amount (bigdec 500)}
+                                                        :transaction-item/amount 500M}
                                                        {:transaction-item/action :transaction-item.action/debit
                                                         :transaction-item/account "Checking"
-                                                        :transaction-item/amount (bigdec 1500)}]})
+                                                        :transaction-item/amount 1500M}]})
           salary-id (resolve-account-id (d/db conn) "Salary")
           actual (->> (get-account-transaction-items (d/db conn) salary-id)
                       (map #(merge (first %) (second %)))
                       (map #(select-keys % [:transaction/date :transaction-item/amount :transaction-item/balance])))
           expected [{:transaction/date #inst "2015-02-01"
-                     :transaction-item/amount (bigdec 1000)
-                     :transaction-item/balance (bigdec 3500)}
+                     :transaction-item/amount 1000M
+                     :transaction-item/balance 3500M}
                     {:transaction/date #inst "2015-01-15"
-                     :transaction-item/amount (bigdec 500)
-                     :transaction-item/balance (bigdec 2500)}
+                     :transaction-item/amount 500M
+                     :transaction-item/balance 2500M}
                     {:transaction/date #inst "2015-01-15"
-                     :transaction-item/amount (bigdec 1000)
-                     :transaction-item/balance (bigdec 2000)}
+                     :transaction-item/amount 1000M
+                     :transaction-item/balance 2000M}
                     {:transaction/date #inst "2015-01-01"
-                     :transaction-item/amount (bigdec 1000)
-                     :transaction-item/balance (bigdec 1000)}]]
+                     :transaction-item/amount 1000M
+                     :transaction-item/balance 1000M}]]
       (is (= expected actual)))
     (testing "A transaction with multiple items referencing children of the same account is handled correctly"
       (let [conn (new-test-db)
@@ -530,18 +530,18 @@
                                      :transaction/description "Paycheck"
                                      :transaction/items [{:transaction-item/action :transaction-item.action/credit
                                                           :transaction-item/account "Salary"
-                                                          :transaction-item/amount (bigdec 1000)}
+                                                          :transaction-item/amount 1000M}
                                                          {:transaction-item/action :transaction-item.action/debit
                                                           :transaction-item/account "Taxes/Federal"
-                                                          :transaction-item/amount (bigdec 150)}
+                                                          :transaction-item/amount 150M}
                                                          {:transaction-item/action :transaction-item.action/debit
                                                           :transaction-item/account "Taxes/Social security"
-                                                          :transaction-item/amount (bigdec 62)}
+                                                          :transaction-item/amount 62M}
                                                          {:transaction-item/action :transaction-item.action/debit
                                                           :transaction-item/account "Taxes/Medicare"
-                                                          :transaction-item/amount (bigdec 14.50)}
+                                                          :transaction-item/amount 14.50M}
                                                          {:transaction-item/action :transaction-item.action/debit
                                                           :transaction-item/account "Checking"
-                                                          :transaction-item/amount (bigdec 773.50)}]})
+                                                          :transaction-item/amount 773.50M}]})
             children-balance (:account/children-balance (resolve-account (d/db conn) "Taxes"))]
-        (is (= (bigdec 226.50) children-balance))))))
+        (is (= 226.50M children-balance))))))

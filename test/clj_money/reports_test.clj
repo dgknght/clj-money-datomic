@@ -25,43 +25,43 @@
                         {:account/name "Non-food"         :account/type :account.type/expense :account/parent "Groceries"}])
 
     (add-budget conn "2015" #inst "2015-01-01")
-    (add-budget-item conn "2015" "Salary"             (repeat 12 (bigdec 1800)))
-    (add-budget-item conn "2015" "Groceries/Food"     (repeat 12 (bigdec  245)))
-    (add-budget-item conn "2015" "Groceries/Non-food" (repeat 12 (bigdec  150)))
+    (add-budget-item conn "2015" "Salary"             (repeat 12 1800M))
+    (add-budget-item conn "2015" "Groceries/Food"     (repeat 12 245M))
+    (add-budget-item conn "2015" "Groceries/Non-food" (repeat 12 150M))
 
     (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
                                   :transaction/description "Opening balance"
-                                  :amount (bigdec 20000)
+                                  :amount 20000M
                                   :debit-account "Savings/Reserve"
                                   :credit-account "Opening balances"})
     (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
                                   :transaction/description "Opening balance"
-                                  :amount (bigdec 12000)
+                                  :amount 12000M
                                   :debit-account "Savings/Car"
                                   :credit-account "Opening balances"})
     (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
                                   :transaction/description "Paycheck"
-                                  :amount (bigdec 1000)
+                                  :amount 1000M
                                   :debit-account "Checking"
                                   :credit-account "Salary"})
     (add-simple-transaction conn {:transaction/date #inst "2015-01-04"
                                   :transaction/description "Kroger"
-                                  :amount (bigdec 100)
+                                  :amount 100M
                                   :debit-account "Groceries/Food"
                                   :credit-account "Credit card"})
     (add-simple-transaction conn {:transaction/date #inst "2015-01-11"
                                   :transaction/description "Kroger"
-                                  :amount (bigdec 100)
+                                  :amount 100M
                                   :debit-account "Groceries/Food"
                                   :credit-account "Credit card"})
     (add-simple-transaction conn {:transaction/date #inst "2015-01-15"
                                   :transaction/description "Paycheck"
-                                  :amount (bigdec 1000)
+                                  :amount 1000M
                                   :debit-account "Checking"
                                   :credit-account "Salary"})
     (add-simple-transaction conn {:transaction/date #inst "2015-01-18"
                                   :transaction/description "Kroger"
-                                  :amount (bigdec 100)
+                                  :amount 100M
                                   :debit-account "Groceries/Non-food"
                                   :credit-account "Credit card"})
   conn))
@@ -71,31 +71,31 @@
     (let [conn (populate-db)
           report (balance-sheet-report (d/db conn) #inst "2015-01-31")
           actual (mapv #(select-keys % [:caption :value :depth :style]) report)
-          expected [{:caption "Assets"            :value (bigdec 34000) :depth 0 :style :header}
-                     {:caption "Checking"          :value (bigdec 2000)  :depth 0 :style :data}
-                     {:caption "Savings"           :value (bigdec 32000) :depth 0 :style :data}
-                     {:caption "Car"               :value (bigdec 12000) :depth 1 :style :data}
-                     {:caption "Reserve"           :value (bigdec 20000) :depth 1 :style :data}
-                     {:caption "Liabilities"       :value (bigdec 300)   :depth 0 :style :header}
-                     {:caption "Credit card"       :value (bigdec 300)   :depth 0 :style :data}
-                     {:caption "Equity"            :value (bigdec 33700) :depth 0 :style :header}
-                     {:caption "Opening balances"  :value (bigdec 32000) :depth 0 :style :data}
-                     {:caption "Retained earnings" :value (bigdec 1700)  :depth 0 :style :data}]]
+          expected [{:caption "Assets"            :value 34000M :depth 0 :style :header}
+                    {:caption "Checking"          :value 2000M  :depth 0 :style :data}
+                    {:caption "Savings"           :value 32000M :depth 0 :style :data}
+                    {:caption "Car"               :value 12000M :depth 1 :style :data}
+                    {:caption "Reserve"           :value 20000M :depth 1 :style :data}
+                    {:caption "Liabilities"       :value 300M   :depth 0 :style :header}
+                    {:caption "Credit card"       :value 300M   :depth 0 :style :data}
+                    {:caption "Equity"            :value 33700M :depth 0 :style :header}
+                    {:caption "Opening balances"  :value 32000M :depth 0 :style :data}
+                    {:caption "Retained earnings" :value 1700M  :depth 0 :style :data}]]
       (is (= expected actual))))
   (testing "The report includes previous balances when given a date"
     (let [conn (populate-db)
           report (balance-sheet-report (d/db conn) #inst "2015-01-15")
           actual (mapv #(select-keys % [:caption :value :depth :style]) report)
-          expected [{:caption "Assets"            :value (bigdec 34000) :depth 0 :style :header}
-                     {:caption "Checking"          :value (bigdec 2000)  :depth 0 :style :data}
-                     {:caption "Savings"           :value (bigdec 32000) :depth 0 :style :data}
-                     {:caption "Car"               :value (bigdec 12000) :depth 1 :style :data}
-                     {:caption "Reserve"           :value (bigdec 20000) :depth 1 :style :data}
-                     {:caption "Liabilities"       :value (bigdec 200)   :depth 0 :style :header}
-                     {:caption "Credit card"       :value (bigdec 200)   :depth 0 :style :data}
-                     {:caption "Equity"            :value (bigdec 33800) :depth 0 :style :header}
-                     {:caption "Opening balances"  :value (bigdec 32000) :depth 0 :style :data}
-                     {:caption "Retained earnings" :value (bigdec 1800)  :depth 0 :style :data}]]
+          expected [{:caption "Assets"            :value 34000M :depth 0 :style :header}
+                    {:caption "Checking"          :value 2000M  :depth 0 :style :data}
+                    {:caption "Savings"           :value 32000M :depth 0 :style :data}
+                    {:caption "Car"               :value 12000M :depth 1 :style :data}
+                    {:caption "Reserve"           :value 20000M :depth 1 :style :data}
+                    {:caption "Liabilities"       :value 200M   :depth 0 :style :header}
+                    {:caption "Credit card"       :value 200M   :depth 0 :style :data}
+                    {:caption "Equity"            :value 33800M :depth 0 :style :header}
+                    {:caption "Opening balances"  :value 32000M :depth 0 :style :data}
+                    {:caption "Retained earnings" :value 1800M  :depth 0 :style :data}]]
       (is (= expected actual)))))
 
 (deftest create-an-income-statement-report
@@ -103,23 +103,23 @@
     (let [conn (populate-db)
           report (income-statement-report (d/db conn) #inst "2015-01-01" #inst "2015-01-31")
           actual (mapv #(select-keys % [:caption :value :depth :style]) report)
-          expected [{:caption "Income"    :value (bigdec 2000) :depth 0 :style :header}
-                    {:caption "Salary"    :value (bigdec 2000) :depth 0 :style :data}
-                    {:caption "Expense"   :value (bigdec 300)  :depth 0 :style :header}
-                    {:caption "Groceries" :value (bigdec 300)  :depth 0 :style :data}
-                    {:caption "Food"      :value (bigdec 200)  :depth 1 :style :data}
-                    {:caption "Non-food"  :value (bigdec 100)  :depth 1 :style :data}] ]
+          expected [{:caption "Income"    :value 2000M :depth 0 :style :header}
+                    {:caption "Salary"    :value 2000M :depth 0 :style :data}
+                    {:caption "Expense"   :value 300M  :depth 0 :style :header}
+                    {:caption "Groceries" :value 300M  :depth 0 :style :data}
+                    {:caption "Food"      :value 200M  :depth 1 :style :data}
+                    {:caption "Non-food"  :value 100M  :depth 1 :style :data}] ]
       (is (= expected actual))))
   (testing "The report excludes data not between the specified dates"
     (let [conn (populate-db)
           report (income-statement-report (d/db conn) #inst "2015-01-01" #inst "2015-01-04")
           actual (mapv #(select-keys % [:caption :value :depth :style]) report)
-          expected [{:caption "Income"    :value (bigdec 1000) :depth 0 :style :header}
-                    {:caption "Salary"    :value (bigdec 1000) :depth 0 :style :data}
-                    {:caption "Expense"   :value (bigdec 100)  :depth 0 :style :header}
-                    {:caption "Groceries" :value (bigdec 100)  :depth 0 :style :data}
-                    {:caption "Food"      :value (bigdec 100)  :depth 1 :style :data}
-                    {:caption "Non-food"  :value (bigdec 0)    :depth 1 :style :data}]]
+          expected [{:caption "Income"    :value 1000M :depth 0 :style :header}
+                    {:caption "Salary"    :value 1000M :depth 0 :style :data}
+                    {:caption "Expense"   :value 100M  :depth 0 :style :header}
+                    {:caption "Groceries" :value 100M  :depth 0 :style :data}
+                    {:caption "Food"      :value 100M  :depth 1 :style :data}
+                    {:caption "Non-food"  :value 0M    :depth 1 :style :data}]]
       (is (= expected actual)))))
 
 (defn report-diff
@@ -137,11 +137,11 @@
 (deftest create-a-budget-report
   (testing "A budget report compaers budgeted amounts to actual amounts"
     (let [conn (populate-db)
-          expected [{:path "Income"             :budget (bigdec 1800) :value (bigdec 2000) :difference (bigdec  200) :percent-difference (bigdec  0.111) :actual-per-month (bigdec 2000) :depth 0 :style :header}
-                    {:path "Salary"             :budget (bigdec 1800) :value (bigdec 2000) :difference (bigdec  200) :percent-difference (bigdec  0.111) :actual-per-month (bigdec 2000) :depth 0 :style :data}
-                    {:path "Expense"            :budget  (bigdec 395) :value  (bigdec 300) :difference  (bigdec -95) :percent-difference (bigdec -0.241) :actual-per-month  (bigdec 300) :depth 0 :style :header}
-                    {:path "Groceries/Non-food" :budget  (bigdec 150) :value  (bigdec 100) :difference  (bigdec -50) :percent-difference (bigdec -0.333) :actual-per-month  (bigdec 100) :depth 1 :style :data}
-                    {:path "Groceries/Food"     :budget  (bigdec 245) :value  (bigdec 200) :difference  (bigdec -45) :percent-difference (bigdec -0.184) :actual-per-month  (bigdec 200) :depth 1 :style :data}]
+          expected [{:path "Income"             :budget 1800M :value 2000M :difference  200M :percent-difference  0.111M :actual-per-month 2000M :depth 0 :style :header}
+                    {:path "Salary"             :budget 1800M :value 2000M :difference  200M :percent-difference  0.111M :actual-per-month 2000M :depth 0 :style :data}
+                    {:path "Expense"            :budget  395M :value  300M :difference  -95M :percent-difference -0.241M :actual-per-month  300M :depth 0 :style :header}
+                    {:path "Groceries/Non-food" :budget  150M :value  100M :difference  -50M :percent-difference -0.333M :actual-per-month  100M :depth 1 :style :data}
+                    {:path "Groceries/Food"     :budget  245M :value  200M :difference  -45M :percent-difference -0.184M :actual-per-month  200M :depth 1 :style :data}]
           report (budget-report (d/db conn) "2015" 1)
           actual (mapv #(select-keys % (-> expected first keys)) report)]
       (is (= expected actual)))))
@@ -150,12 +150,12 @@
   (testing "A budget monitor compares actual spending to projected spending with a progress bar kind of approach"
     (let [conn (populate-db)
           report (budget-monitor (d/db conn) "Groceries/Food" #inst "2015-01-20")
-          expected {:budget (bigdec 245)
-                     :expected (bigdec 158)
+          expected {:budget 245M
+                     :expected 158M
                      :expected-percent 20/31
-                     :actual (bigdec 200)
-                     :actual-percent (bigdec 0.82)
-                     :projected (bigdec 310)}]
+                     :actual 200M
+                     :actual-percent 0.82M
+                     :projected 310M}]
       (is (= expected report)))))
 
 (deftest create-display-records
