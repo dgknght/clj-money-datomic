@@ -564,6 +564,30 @@
           salary (resolve-account (d/db conn) "Salary")]
       (is (= 1100M (:account/balance checking)))
       (is (= 1100M (:account/balance salary)))))
-  (testing "When a transaction item amount is updated, following transaction item balances are updated" (is false))
+  (testing "When a transaction item amount is updated, following transaction item balances are updated"
+    (let [conn (new-test-db)
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
+                                          :transaction/description "Paycheck"
+                                          :amount 1000M
+                                          :debit-account "Checking"
+                                          :credit-account "Salary"})
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-15"
+                                          :transaction/description "Paycheck"
+                                          :amount 1000M
+                                          :debit-account "Checking"
+                                          :credit-account "Salary"})
+          checking-before (resolve-account (d/db conn) "Checking")
+          tx (->> (get-transactions (d/db conn))
+                  (filter #(= #inst "2015-01-01" (:transaction/date %)))
+                  first)
+          updated-tx (-> tx
+                         (assoc-in [:transaction/items 0 :transaction-item/amount] 1100M)
+                         (assoc-in [:transaction/items 1 :transaction-item/amount] 1100M))
+          _ (update-transaction conn updated-tx)
+          fetched-tx (->> (get-transactions (d/db conn))
+                          (filter #(= #inst "2015-01-15" (:transaction/date %)))
+                          first)]
+      (is (= 2100M (-> fetched-tx :transaction/items first :transaction-item/balance)))
+      (is (= 2100M (-> fetched-tx :transaction/items second :transaction-item/balance)))))
   (testing "When a transaction item account is updated, balances are adjusted for the old account and the new account" (is false))
   (testing "When a transaction date is updated, all transaction item indexes are updated" (is false)))
