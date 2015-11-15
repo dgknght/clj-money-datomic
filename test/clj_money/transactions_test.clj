@@ -12,6 +12,8 @@
                     :account/type :account.type/asset}
                    {:account/name "Salary"
                     :account/type :account.type/income}
+                   {:account/name "Gasoline"
+                    :account/type :account.type/expense}
                    {:account/name "Groceries"
                     :account/type :account.type/expense}
                    {:account/name "Taxes"
@@ -589,5 +591,26 @@
                           first)]
       (is (= 2100M (-> fetched-tx :transaction/items first :transaction-item/balance)))
       (is (= 2100M (-> fetched-tx :transaction/items second :transaction-item/balance)))))
-  (testing "When a transaction item account is updated, balances are adjusted for the old account and the new account" (is false))
+  (testing "When a transaction item account is updated, balances are adjusted for the old account and the new account"
+    (let [conn (new-test-db)
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
+                                          :transaction/description "Paycheck"
+                                          :amount 1000M
+                                          :debit-account "Checking"
+                                          :credit-account "Salary"})
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-04"
+                                          :transaction/description "Kroger"
+                                          :amount 100M
+                                          :debit-account "Groceries"
+                                          :credit-account "Checking"})
+          tx (->> (get-transactions (d/db conn))
+                  (filter #(= #inst "2015-01-04" (:transaction/date %)))
+                  first)
+          gasoline (resolve-account (d/db conn) "Gasoline")
+          updated-tx (assoc-in tx [:transaction/items 0 :transaction-item/account] (:db/id gasoline))
+          _ (update-transaction conn updated-tx)
+          gasoline-after (resolve-account (d/db conn) "Gasoline")
+          groceries-after (resolve-account (d/db conn) "Groceries")]
+      (is (= 0M (:account/balance groceries-after)))
+      (is (= 100M (:account/balance gasoline-after)))))
   (testing "When a transaction date is updated, all transaction item indexes are updated" (is false)))
