@@ -16,6 +16,12 @@
 
 (declare resolve-transactions-enums)
 
+(defn find-transaction-item
+  "Given an id, finds the transaction item"
+  [db id]
+  (->> (d/entity db id)
+       d/touch))
+
 (defn lookup-transaction-items
   "Given a transaction, looks up the transaction items"
   [db transaction]
@@ -114,6 +120,14 @@
      :current-items []
      :adj-items []}))
 
+(defn polarized-amount
+  "Given a transaction item, returns the amount by which the corresponding
+  account balance changes as a result of the transaction"
+  ([db item]
+   (polarized-amount db (resolve-account db (:transaction-item/account item) item)))
+  ([db account {amount :transaction-item/amount action :transaction-item/action}]
+   (* amount (polarizer account action))))
+
 (defn process-current-items
   [context db account items]
   (reduce (fn [c item]
@@ -155,6 +169,22 @@
             context
             after-items)))
 
+(defn append-dereferenced-account-deltas
+  "Given a list of items, appends any account deltas to the given
+  list for any items for which the account has changed such that the
+  account no longer referended by the transaction item will have
+  the correct balance"
+  [db deltas items]
+  (->> items
+       (remove #(map? (:db/id %)))
+       (reduce (fn [d-list item]
+                 (let [old-item (find-transaction-item db (:db/id item))]
+                   (when (not= (:transaction-item/account item) (:transaction-item/account old-item))
+                     (let [account (resolve-account db (:transaction-item/account old-item))
+                           delta (- 0 (polarized-amount db account old-item))]
+                       (conj d-list [account delta])))))
+               deltas)))
+
 (defn transaction-item-balance-adjustments
   "Given a transaction item, account-id, and transaction date, returns a map
   containing:
@@ -171,7 +201,8 @@
                                 (process-after-items db account-id transaction-date unique-item-ids))
         account-adjustment  (- last-balance (:account/balance account))
         adjusted-account    [:db/add account-id :account/balance last-balance]
-        account-deltas      (map #(vector % account-adjustment) (rest (get-account-with-parents db account)))]
+        account-deltas      (map #(vector % account-adjustment) (rest (get-account-with-parents db account)))
+        account-deltas      (append-dereferenced-account-deltas db account-deltas items)]
     {:current-items current-items
      :adjusted-items adj-items
      :adjusted-account adjusted-account
