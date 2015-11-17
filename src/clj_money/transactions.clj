@@ -175,18 +175,21 @@
   ([db account {amount :transaction-item/amount action :transaction-item/action}]
    (* amount (polarizer account action))))
 
+(defn process-current-item
+  [account context item]
+  (let [pol (polarizer account (:transaction-item/action item))
+        adjustment (* pol (:transaction-item/amount item))
+        balance (+ (:last-balance context) adjustment)
+        index (+ (:last-index context) 1N)]
+    (-> context
+        (update :current-items conj (assoc item :transaction-item/balance balance
+                                           :transaction-item/index index))
+        (assoc :last-balance balance
+               :last-index index))))
+
 (defn process-current-items
   [context db account items]
-  (reduce (fn [c item]
-            (let [pol (polarizer account (:transaction-item/action item))
-                  adjustment (* pol (:transaction-item/amount item))
-                  balance (+ (:last-balance c) adjustment)
-                  index (+ (:last-index c) 1N)]
-              (-> c
-                  (update :current-items conj (assoc item :transaction-item/balance balance
-                                                      :transaction-item/index index))
-                  (assoc :last-balance balance
-                         :last-index index))))
+  (reduce (partial process-current-item account)
           context
           items))
 
