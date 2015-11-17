@@ -9,12 +9,40 @@
         [clj-money.util :as util])
   (:gen-class))
 
-;; ----- Primary methods -----
-
 (def max-date (t/date-time 9999 12 31))
 (def min-date (t/date-time 1000  1  5))
 
-(declare resolve-transactions-enums)
+(defn resolve-action
+  "Looks up a transaction item action from a db/id"
+  [db action]
+  (get-ident db (:db/id action)))
+
+(defn resolve-transaction-item-enums
+  "Looks up references in a list of transaction item maps"
+  [db item]
+  (update item
+          :transaction-item/action
+         #(resolve-action db %)))
+
+(defn resolve-transaction-items-enums
+  "Looks up references in a list of transaction items"
+  [db items]
+  (mapv #(resolve-transaction-item-enums db %) items))
+
+(defn resolve-transaction-enums
+  "Looks up references in transaction map"
+  [db transaction]
+  (update transaction :transaction/items #(resolve-transaction-items-enums db %)))
+
+(defn resolve-transactions-enums
+  "Looks up references in a list of transaction maps"
+  [db transactions]
+  (map #(resolve-transaction-enums db %) transactions))
+
+(defn get-transaction
+  "Returns a transaction, given a transaction id"
+  [db id]
+  (d/touch (d/entity db id)))
 
 (defn find-transaction-item
   "Given an id, finds the transaction item"
@@ -90,7 +118,31 @@
              (coerce/to-date end-date))
           (prepare-transaction-item-query-result db account-id options)))))
 
-(declare validate-transaction-data)
+(defn item-total
+  "returns the total of the debit or credit actions"
+  [action items]
+  (->> items
+       (clojure.core/filter #(= action (:transaction-item/action %)))
+       (map :transaction-item/amount)
+       (reduce +)))
+
+(defn credit-debit-balanced?
+  "Returns a boolean value indicating whether or not the credit and debit totals are equal in the specified items"
+  [items]
+  (let [credit-total (item-total :transaction-item.action/credit items)
+        debit-total (item-total :transaction-item.action/debit items)]
+    (= credit-total debit-total)))
+
+(defn validate-transaction-data
+  "Throws an exception if any of the data is invalid"
+  [data]
+  (let [errors (reduce (fn [list [test-fn test-msg]]
+                          (if (test-fn data) (conj list test-msg)))
+                       []
+                       [[#(nil? (:transaction/date %)) ":transaction/date must be specified"]
+                        [#(nil? (:transaction/description %)) ":transaction/description must be specified"]
+                        [#(not (credit-debit-balanced? (:transaction/items %))) "The transaction items must have balanced debit and credit totals"]])]
+    (if (seq errors) (throw (IllegalArgumentException. (apply str (concat ["The transaction data is not valid: "] errors)))))))
 
 (defn get-last-transaction-item-before
   [db account-id transaction-date]
@@ -99,11 +151,6 @@
 (defn get-transaction-items-after
   [db account-id transaction-date]
   (mapv first (get-account-transaction-items db account-id transaction-date max-date {:sort-order :asc})))
-
-(defn resolve-action
-  "Looks up a transaction item action from a db/id"
-  [db action]
-  (get-ident db (:db/id action)))
 
 (defn init-item-processing-context
   "Creates the processing context for a given a transaction item and transaction date.
@@ -122,7 +169,7 @@
 
 (defn polarized-amount
   "Given a transaction item, returns the amount by which the corresponding
-  account balance changes as a result of the transaction"
+  account balance changes as a result of the transaction item"
   ([db item]
    (polarized-amount db (resolve-account db (:transaction-item/account item) item)))
   ([db account {amount :transaction-item/amount action :transaction-item/action}]
@@ -318,48 +365,6 @@
                                                             :transaction-item/amount amount}]))]
     (add-transaction conn transaction-tx-data)))
 
-(defn get-transaction
-  "Returns a transaction, given a transaction id"
-  [db id]
-  (d/touch (d/entity db id)))
-
-(defn resolve-transaction-item-enums
-  "Looks up references in a list of transaction item maps"
-  [db item]
-  (update item
-          :transaction-item/action
-         #(resolve-action db %)))
-
-(defn resolve-transaction-items-enums
-  "Looks up references in a list of transaction items"
-  [db items]
-  (mapv #(resolve-transaction-item-enums db %) items))
-
-(defn resolve-transaction-enums
-  "Looks up references in transaction map"
-  [db transaction]
-  (update transaction :transaction/items #(resolve-transaction-items-enums db %)))
-
-(defn resolve-transactions-enums
-  "Looks up references in a list of transaction maps"
-  [db transactions]
-  (map #(resolve-transaction-enums db %) transactions))
-
-(defn item-total
-  "returns the total of the debit or credit actions"
-  [action items]
-  (->> items
-       (clojure.core/filter #(= action (:transaction-item/action %)))
-       (map :transaction-item/amount)
-       (reduce +)))
-
-(defn credit-debit-balanced?
-  "Returns a boolean value indicating whether or not the credit and debit totals are equal in the specified items"
-  [items]
-  (let [credit-total (item-total :transaction-item.action/credit items)
-        debit-total (item-total :transaction-item.action/debit items)]
-    (= credit-total debit-total)))
-
 (defn calculate-account-balance
   "Given an account ID, totals the transaction item values for the specified account through the specified date"
   ([db account as-of-date] (calculate-account-balance db account earliest-date as-of-date))
@@ -383,14 +388,3 @@
               (+ result (* amount (polarizer account action))))
             (bigdec 0)
             amounts))))
-
-(defn validate-transaction-data
-  "Throws an exception if any of the data is invalid"
-  [data]
-  (let [errors (reduce (fn [list [test-fn test-msg]]
-                          (if (test-fn data) (conj list test-msg)))
-                       []
-                       [[#(nil? (:transaction/date %)) ":transaction/date must be specified"]
-                        [#(nil? (:transaction/description %)) ":transaction/description must be specified"]
-                        [#(not (credit-debit-balanced? (:transaction/items %))) "The transaction items must have balanced debit and credit totals"]])]
-    (if (seq errors) (throw (IllegalArgumentException. (apply str (concat ["The transaction data is not valid: "] errors)))))))
