@@ -190,29 +190,33 @@
           context
           items))
 
+(defn process-after-item
+  [account
+   {:keys [last-balance last-index db]
+    :as context}
+   {amount              :transaction-item/amount
+    action              :transaction-item/action
+    id                  :db/id
+    :as                 item}]
+
+  (let [pol         (polarizer account (resolve-action db action))
+        adjustment  (* pol amount)
+        new-balance (+ last-balance adjustment)
+        new-index   (+ last-index 1)]
+    (-> context
+        (update :adj-items #(conj % [:db/add id
+                                     :transaction-item/balance new-balance]
+                                  [:db/add id
+                                   :transaction-item/index new-index]))
+        (assoc :last-balance new-balance)
+        (assoc :last-index new-index))))
+
 (defn process-after-items
   [context db account-id transaction-date ignore]
   (let [account (find-account db account-id)
         after-items (->> (get-transaction-items-after db account-id transaction-date)
                          (remove #(ignore (:db/id %))))]
-    (reduce (fn [{:keys [last-balance last-index db]
-                  :as context}
-                 {amount              :transaction-item/amount
-                  action              :transaction-item/action
-                  id                  :db/id
-                  :as                 item}]
-
-              (let [pol         (polarizer account (resolve-action db action))
-                    adjustment  (* pol amount)
-                    new-balance (+ last-balance adjustment)
-                    new-index   (+ last-index 1)]
-                (-> context
-                    (update :adj-items #(conj % [:db/add id
-                                                 :transaction-item/balance new-balance]
-                                              [:db/add id
-                                               :transaction-item/index new-index]))
-                    (assoc :last-balance new-balance)
-                    (assoc :last-index new-index))))
+    (reduce (partial process-after-item account)
             context
             after-items)))
 
