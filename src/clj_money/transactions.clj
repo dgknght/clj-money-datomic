@@ -160,7 +160,6 @@
   The context includes :db :last-balance :last-index :adj-items."
 
   [db account-id transaction-date]
-
   (let [{balance :transaction-item/balance
          index   :transaction-item/index} (get-last-transaction-item-before db account-id transaction-date)]
     {:db db
@@ -212,21 +211,25 @@
             context
             after-items)))
 
-(defn append-dereferenced-account-deltas
-  "Given a list of items, appends any account deltas to the given
+(defn dereferenced-account-deltas
+  "Given a list of items, returns any account deltas to the given
   list for any items for which the account has changed such that the
   account no longer referended by the transaction item will have
   the correct balance"
-  [db deltas items]
+  [db items]
   (->> items
        (remove #(map? (:db/id %)))
-       (reduce (fn [d-list item]
+       (reduce (fn [deltas item]
                  (let [old-item (find-transaction-item db (:db/id item))]
-                   (when (not= (:transaction-item/account item) (:transaction-item/account old-item))
-                     (let [account (resolve-account db (:transaction-item/account old-item))
+                   (when (not= 1 (->> [old-item item]
+                                      (map :transaction-item/account)
+                                      (map :db/id)
+                                      (into #{})
+                                      count))
+                     (let [account (:transaction-item/account old-item)
                            delta (- 0 (polarized-amount db account old-item))]
-                       (conj d-list [account delta])))))
-               deltas)))
+                       (conj deltas [account delta])))))
+               [])))
 
 (defn transaction-item-balance-adjustments
   "Given all transaction items for an account withing a transaction,
@@ -244,8 +247,7 @@
                                 (process-after-items account-id transaction-date unique-item-ids))
         account-adjustment  (- last-balance (:account/balance account))
         adjusted-account    [:db/add account-id :account/balance last-balance]
-        account-deltas      (map #(vector % account-adjustment) (rest (get-account-with-parents db account)))
-        account-deltas      (append-dereferenced-account-deltas db account-deltas items)]
+        account-deltas      (dereferenced-account-deltas db items)]
     {:current-items current-items
      :adjusted-items adj-items
      :adjusted-account adjusted-account
@@ -276,7 +278,7 @@
                {})
        (map (fn [[account adjustment]]
               [:db/add (:db/id account)
-               :account/children-balance (+ (:account/children-balance account) adjustment)]))))
+               :account/balance (+ (:account/balance account) adjustment)]))))
 
 (defn append-balance-adjustment-tx-data
   "Appends the datomic transaction commands necessary to adjust balances 
@@ -290,10 +292,11 @@
                          :account-deltas []
                          :transaction-date transaction-date}
                         (group-by :transaction-item/account items))
-        account-adjustments (-> context :account-deltas finalize-account-adjustments)
-        all-adjustments (concat (:adjusted-items context) (:adjusted-accounts context) account-adjustments)]
-    (cons (assoc transaction :transaction/items (:current-items context))
-          all-adjustments)))
+        account-adjustments (-> context :account-deltas finalize-account-adjustments)]
+    (cons transaction
+          (concat (:adjusted-items context)
+                  (:adjusted-accounts context)
+                  account-adjustments))))
 
 (defn resolve-transaction-item-data
   "Resolves references inside transaction item data"
@@ -339,12 +342,22 @@
                               item))
                  items))))
 
+(defn remove-balance-and-index
+  "Removes the existing balance and index attributes from line
+  items so that they can be recalculated as part of an update"
+  [transaction]
+  (update-in transaction
+             [:transaction/items]
+             (fn [items]
+               (map #(dissoc % :transaction-item/balance :transaction-item/index) items))))
+
 (defn update-transaction
   "Updates an existing transaction in the system"
   [conn data]
   (let [db (d/db conn)
         tx-data (->> data
                      (resolve-references db)
+                     (remove-balance-and-index)
                      (append-balance-adjustment-tx-data db))]
     @(d/transact conn tx-data)))
 
