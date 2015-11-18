@@ -15,7 +15,9 @@
 (defn resolve-action
   "Looks up a transaction item action from a db/id"
   [db action]
-  (get-ident db (:db/id action)))
+  (if (keyword? action)
+    action
+    (get-ident db (:db/id action))))
 
 (defn resolve-transaction-item-enums
   "Looks up references in a list of transaction item maps"
@@ -175,25 +177,7 @@
   ([db account {amount :transaction-item/amount action :transaction-item/action}]
    (* amount (polarizer account action))))
 
-(defn process-current-item
-  [account context item]
-  (let [pol (polarizer account (:transaction-item/action item))
-        adjustment (* pol (:transaction-item/amount item))
-        balance (+ (:last-balance context) adjustment)
-        index (+ (:last-index context) 1N)]
-    (-> context
-        (update :current-items conj (assoc item :transaction-item/balance balance
-                                           :transaction-item/index index))
-        (assoc :last-balance balance
-               :last-index index))))
-
-(defn process-current-items
-  [context db account items]
-  (reduce (partial process-current-item account)
-          context
-          items))
-
-(defn process-after-item
+(defn process-item
   [account
    {:keys [last-balance last-index db]
     :as context}
@@ -201,7 +185,6 @@
     action              :transaction-item/action
     id                  :db/id
     :as                 item}]
-
   (let [pol         (polarizer account (resolve-action db action))
         adjustment  (* pol amount)
         new-balance (+ last-balance adjustment)
@@ -214,12 +197,18 @@
         (assoc :last-balance new-balance)
         (assoc :last-index new-index))))
 
+(defn process-current-items
+  [context account items]
+  (reduce (partial process-item account)
+          context
+          items))
+
 (defn process-after-items
-  [context db account-id transaction-date ignore]
+  [{db :db :as context} account-id transaction-date ignore]
   (let [account (find-account db account-id)
         after-items (->> (get-transaction-items-after db account-id transaction-date)
                          (remove #(ignore (:db/id %))))]
-    (reduce (partial process-after-item account)
+    (reduce (partial process-item account)
             context
             after-items)))
 
@@ -240,9 +229,9 @@
                deltas)))
 
 (defn transaction-item-balance-adjustments
-  "Given a transaction item, account-id, and transaction date, returns a map
-  containing:
-  :items - the original items with balance and index appended
+  "Given all transaction items for an account withing a transaction,
+  account-id, and transaction date, returns a map containing:
+  :current-items - the original items with balance and index appended
   :adjusted-items - adjustments to index and balance of all affected existing transaction items
   :account-deltas - the change to be applied to the account and its parents to update the balances"
   [db account-token items transaction-date]
@@ -251,8 +240,8 @@
         {:keys [current-items
                 last-balance
                 adj-items]} (-> (init-item-processing-context db account-id transaction-date)
-                                (process-current-items db account items)
-                                (process-after-items db account-id transaction-date unique-item-ids))
+                                (process-current-items account items)
+                                (process-after-items account-id transaction-date unique-item-ids))
         account-adjustment  (- last-balance (:account/balance account))
         adjusted-account    [:db/add account-id :account/balance last-balance]
         account-deltas      (map #(vector % account-adjustment) (rest (get-account-with-parents db account)))
