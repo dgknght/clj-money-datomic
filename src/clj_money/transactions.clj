@@ -208,6 +208,26 @@
                        (conj deltas [account delta])))))
                [])))
 
+(defn init-item-processing-context
+  "Initializes the processing context for a sequence of items
+  from an account"
+  [db account-id {transaction-date :transaction/date
+                  transaction-id :db/id
+                  :as transaction}]
+  (let [reified-transaction (if-not (map? transaction-id)
+                              (get-transaction db transaction-id))
+        start-date (if reified-transaction
+                     (min (:transaction/date reified-transaction) transaction-date)
+                     transaction-date)
+        basis-item (or (get-last-transaction-item-before db account-id start-date)
+                       {:transaction-item/index -1N
+                        :transaction-item/balance 0M})]
+    {:db db
+     :last-index (:transaction-item/index basis-item)
+     :last-balance (:transaction-item/balance basis-item)
+     :start-date start-date
+     :adj-items []}))
+
 (defn transaction-item-balance-adjustments
   "Given all transaction items for an account withing a transaction,
   account-id, and transaction date, returns a map containing:
@@ -216,25 +236,14 @@
   :account-deltas - the change to be applied to the account and its parents to update the balances"
   [db account-token items transaction]
   (let [{account-id :db/id :as account} (resolve-account db account-token)
-        transaction-id (:db/id transaction)
-        reified-transaction (if-not (map? transaction-id)
-                              (get-transaction db transaction-id))
-        start-date (if reified-transaction
-                     (min (:transaction/date reified-transaction) (:transaction/date transaction))
-                     (:transaction/date transaction))
-        basis-item (or (get-last-transaction-item-before db account-id start-date)
-                       {:transaction-item/index -1N
-                        :transaction-item/balance 0M})
-        all-items (->> (get-transaction-items-after db account-id start-date)
+        context (init-item-processing-context db account-id transaction)
+        all-items (->> (get-transaction-items-after db account-id (:start-date context))
                        (concat (map #(vector % transaction) items))
                        (sort-by (comp :transaction/date second))
                        (map first))
         {:keys [current-items
                 last-balance
-                adj-items]} (-> {:db db
-                                 :last-index (:transaction-item/index basis-item)
-                                 :last-balance (:transaction-item/balance basis-item)
-                                 :adj-items []}
+                adj-items]} (-> context
                                 (process-items account all-items))
         account-adjustment  (- last-balance (:account/balance account))
         adjusted-account    [:db/add account-id :account/balance last-balance]
