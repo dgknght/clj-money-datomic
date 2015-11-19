@@ -217,7 +217,11 @@
   (let [reified-transaction (if-not (map? transaction-id)
                               (get-transaction db transaction-id))
         start-date (if reified-transaction
-                     (min (:transaction/date reified-transaction) transaction-date)
+                     (->> [transaction reified-transaction]
+                          (map :transaction/date)
+                          (map coerce/to-long)
+                          (apply min)
+                          coerce/from-long)
                      transaction-date)
         basis-item (or (get-last-transaction-item-before db account-id start-date)
                        {:transaction-item/index -1N
