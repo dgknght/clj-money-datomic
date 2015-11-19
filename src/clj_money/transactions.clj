@@ -196,7 +196,7 @@
         (assoc :last-balance new-balance)
         (assoc :last-index new-index))))
 
-(defn process-current-items
+(defn process-items
   [context account items]
   (reduce (partial process-item account)
           context
@@ -207,9 +207,7 @@
   (let [account (find-account db account-id)
         after-items (->> (get-transaction-items-after db account-id transaction-date)
                          (remove #(ignore (:db/id %))))]
-    (reduce (partial process-item account)
-            context
-            after-items)))
+    (process-items context account after-items)))
 
 (defn dereferenced-account-deltas
   "Given a list of items, returns any account deltas to the given
@@ -243,7 +241,7 @@
         {:keys [current-items
                 last-balance
                 adj-items]} (-> (init-item-processing-context db account-id transaction-date)
-                                (process-current-items account items)
+                                (process-items account items)
                                 (process-after-items account-id transaction-date unique-item-ids))
         account-adjustment  (- last-balance (:account/balance account))
         adjusted-account    [:db/add account-id :account/balance last-balance]
