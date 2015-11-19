@@ -203,11 +203,10 @@
           items))
 
 (defn process-after-items
-  [{db :db :as context} account-id transaction-date ignore]
-  (let [account (find-account db account-id)
-        after-items (->> (get-transaction-items-after db account-id transaction-date)
-                         (remove #(ignore (:db/id %))))]
-    (process-items context account after-items)))
+  [{db :db :as context} account transaction-date except]
+  (->> (get-transaction-items-after db (:db/id account) transaction-date)
+       (remove #(except (:db/id %)))
+       (process-items context account)))
 
 (defn dereferenced-account-deltas
   "Given a list of items, returns any account deltas to the given
@@ -242,7 +241,7 @@
                 last-balance
                 adj-items]} (-> (init-item-processing-context db account-id transaction-date)
                                 (process-items account items)
-                                (process-after-items account-id transaction-date unique-item-ids))
+                                (process-after-items account transaction-date unique-item-ids))
         account-adjustment  (- last-balance (:account/balance account))
         adjusted-account    [:db/add account-id :account/balance last-balance]
         account-deltas      (dereferenced-account-deltas db items)]
