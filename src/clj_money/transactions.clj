@@ -152,21 +152,7 @@
 
 (defn get-transaction-items-after
   [db account-id transaction-date]
-  (mapv first (get-account-transaction-items db account-id transaction-date max-date {:sort-order :asc})))
-
-(defn init-item-processing-context
-  "Creates the processing context for a given a transaction item and transaction date.
-
-  The context includes :db :last-balance :last-index :adj-items."
-
-  [db account-id transaction-date]
-  (let [{balance :transaction-item/balance
-         index   :transaction-item/index} (get-last-transaction-item-before db account-id transaction-date)]
-    {:db db
-     :last-balance (or balance 0M)
-     :last-index (or index -1N)
-     :current-items []
-     :adj-items []}))
+  (get-account-transaction-items db account-id transaction-date max-date {:sort-order :asc}))
 
 (defn polarized-amount
   "Given a transaction item, returns the amount by which the corresponding
@@ -202,12 +188,6 @@
           context
           items))
 
-(defn process-after-items
-  [{db :db :as context} account transaction-date except]
-  (->> (get-transaction-items-after db (:db/id account) transaction-date)
-       (remove #(except (:db/id %)))
-       (process-items context account)))
-
 (defn dereferenced-account-deltas
   "Given a list of items, returns any account deltas to the given
   list for any items for which the account has changed such that the
@@ -234,14 +214,28 @@
   :current-items - the original items with balance and index appended
   :adjusted-items - adjustments to index and balance of all affected existing transaction items
   :account-deltas - the change to be applied to the account and its parents to update the balances"
-  [db account-token items transaction-date]
+  [db account-token items transaction]
   (let [{account-id :db/id :as account} (resolve-account db account-token)
-        unique-item-ids (->> items (map :db/id) (remove nil?) (apply hash-set))
+        transaction-id (:db/id transaction)
+        reified-transaction (if-not (map? transaction-id)
+                              (get-transaction db transaction-id))
+        start-date (if reified-transaction
+                     (min (:transaction/date reified-transaction) (:transaction/date transaction))
+                     (:transaction/date transaction))
+        basis-item (or (get-last-transaction-item-before db account-id start-date)
+                       {:transaction-item/index -1N
+                        :transaction-item/balance 0M})
+        all-items (->> (get-transaction-items-after db account-id start-date)
+                       (concat (map #(vector % transaction) items))
+                       (sort-by (comp :transaction/date second))
+                       (map first))
         {:keys [current-items
                 last-balance
-                adj-items]} (-> (init-item-processing-context db account-id transaction-date)
-                                (process-items account items)
-                                (process-after-items account transaction-date unique-item-ids))
+                adj-items]} (-> {:db db
+                                 :last-index (:transaction-item/index basis-item)
+                                 :last-balance (:transaction-item/balance basis-item)
+                                 :adj-items []}
+                                (process-items account all-items))
         account-adjustment  (- last-balance (:account/balance account))
         adjusted-account    [:db/add account-id :account/balance last-balance]
         account-deltas      (dereferenced-account-deltas db items)]
@@ -258,7 +252,7 @@
                 account-deltas]} (transaction-item-balance-adjustments (:db context)
                                                                        account-id
                                                                        items
-                                                                       (:transaction-date context))]
+                                                                       (:transaction context))]
     (-> context
         (update :current-items concat current-items)
         (update :adjusted-items concat adjusted-items)
@@ -280,14 +274,14 @@
 (defn append-balance-adjustment-tx-data
   "Appends the datomic transaction commands necessary to adjust balances 
   for the transaction"
-  [db {items :transaction/items transaction-date :transaction/date :as transaction}]
+  [db {items :transaction/items :as transaction}]
   (let [context (reduce transaction-item-group-adjustments
                         {:db db
                          :current-items []
                          :adjusted-items []
                          :adjusted-accounts []
                          :account-deltas []
-                         :transaction-date transaction-date}
+                         :transaction transaction}
                         (group-by :transaction-item/account items))
         account-adjustments (-> context :account-deltas finalize-account-adjustments)]
     (cons transaction
