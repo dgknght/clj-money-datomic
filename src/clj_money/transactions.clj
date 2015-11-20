@@ -313,15 +313,24 @@
           {}
           items))
 
+(defn delta->datom
+  "Given an account delta, return a datom for transacting"
+  [[account delta] attribute]
+  [:db/add (:db/id account) attribute (+ (attribute account) delta)])
+
 (defn finalize-account-adjustments
-  [account-deltas]
-  (->> account-deltas
-       ; sum deltas by account
-       (aggregate first second +)
-       ; map into datoms
-       (map (fn [[account adjustment]]
-              [:db/add (:db/id account)
-               :account/balance (+ (:account/balance account) adjustment)]))))
+  [db account-deltas]
+  (let [balance-deltas (aggregate first second + account-deltas)
+        balance-datoms (map #(delta->datom % :account/balance) balance-deltas)
+        children-deltas (->> balance-deltas
+                             (reduce (fn [result [account delta]]
+                                       (concat result
+                                               (map #(vector % delta)
+                                                    (rest (get-account-with-parents db account)))))
+                                     [])
+                             (aggregate first second +))
+        children-datoms (map #(delta->datom % :account/children-balance) children-deltas)]
+    (concat balance-datoms children-datoms)))
 
 (defn append-balance-adjustment-tx-data
   "Appends the datomic transaction commands necessary to adjust balances 
@@ -333,7 +342,7 @@
                          :account-deltas []
                          :transaction transaction}
                         (group-by :transaction-item/account items))
-        account-adjustments (-> context :account-deltas finalize-account-adjustments)]
+        account-adjustments (->> context :account-deltas (finalize-account-adjustments db))]
     (cons transaction
           (concat (:datoms context)
                   account-adjustments))))
