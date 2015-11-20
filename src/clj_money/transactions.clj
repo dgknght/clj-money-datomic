@@ -163,6 +163,14 @@
    (* amount (polarizer account action))))
 
 (defn process-item
+  "Processes a single transaction item, updating the given
+  context with a datoms for the item balance and index values,
+  and also updates the last-balance and last-index values.
+
+  The context is a map with the keys:
+    :datoms
+    :last-index
+    :last-balance"
   [account
    {:keys [last-balance last-index db]
     :as context}
@@ -175,7 +183,7 @@
         new-balance (+ last-balance adjustment)
         new-index   (+ last-index 1)]
     (-> context
-        (update :adj-items #(conj % [:db/add id
+        (update :datoms #(conj % [:db/add id
                                      :transaction-item/balance new-balance]
                                   [:db/add id
                                    :transaction-item/index new-index]))
@@ -210,7 +218,15 @@
 
 (defn init-item-processing-context
   "Initializes the processing context for a sequence of items
-  from an account"
+  from an account.
+
+  The context contains the following:
+
+    :db           The database
+    :last-index   The basis index used to seed the index for items to be processed
+    :last-balance The last balance to seed the balance for the items to be processed
+    :start-date   The start-date for the items to be processed
+    :datoms       A vector to hold the result of the processed items"
   [db account-id {transaction-date :transaction/date
                   transaction-id :db/id
                   :as transaction}]
@@ -230,14 +246,13 @@
      :last-index (:transaction-item/index basis-item)
      :last-balance (:transaction-item/balance basis-item)
      :start-date start-date
-     :adj-items []}))
+     :datoms []}))
 
 (defn transaction-item-balance-adjustments
   "Given all transaction items for an account withing a transaction,
   account-id, and transaction date, returns a map containing:
-  :current-items - the original items with balance and index appended
-  :adjusted-items - adjustments to index and balance of all affected existing transaction items
-  :account-deltas - the change to be applied to the account and its parents to update the balances"
+  :datoms         - The datoms ready to be transacted (item index and balance values)
+  :account-deltas - Changes to be aggregated and applied to accounts"
   [db account-token items transaction]
   (let [{account-id :db/id :as account} (resolve-account db account-token)
         context (init-item-processing-context db account-id transaction)
@@ -258,31 +273,30 @@
 
                        ; strip off the transactions (leave the transaction items)
                        (map first))
-        {:keys [current-items
-                last-balance
-                adj-items]} (-> context
-                                (process-items account all-items))
+        {:keys [last-balance
+                datoms]} (process-items context account all-items)
         account-adjustment  (- last-balance (:account/balance account))
-        adjusted-account    [:db/add account-id :account/balance last-balance]
-        account-deltas      (dereferenced-account-deltas db items)]
-    {:current-items current-items
-     :adjusted-items adj-items
-     :adjusted-account adjusted-account
+        account-deltas      (cons [account account-adjustment]
+                                  (dereferenced-account-deltas db items))]
+    {:datoms datoms
      :account-deltas account-deltas}))
 
 (defn transaction-item-group-adjustments
+  "Processes all transaction items in a transaction having the save account
+
+  Accepts and returns a context with the following values
+    :db             - The database state before the transaction is applied
+    :datoms         - Datoms ready to be transacted to the data store
+    :account-deltas - Changes to be aggregated and applied to accounts
+    :transaction    - The transaction to being processed"
   [context [account-id items]]
-  (let [{:keys [current-items
-                adjusted-items
-                adjusted-account
+  (let [{:keys [datoms
                 account-deltas]} (transaction-item-balance-adjustments (:db context)
                                                                        account-id
                                                                        items
                                                                        (:transaction context))]
     (-> context
-        (update :current-items concat current-items)
-        (update :adjusted-items concat adjusted-items)
-        (update :adjusted-accounts conj adjusted-account)
+        (update :datoms concat datoms)
         (update :account-deltas concat account-deltas))))
 
 (defn finalize-account-adjustments
@@ -303,16 +317,13 @@
   [db {items :transaction/items :as transaction}]
   (let [context (reduce transaction-item-group-adjustments
                         {:db db
-                         :current-items []
-                         :adjusted-items []
-                         :adjusted-accounts []
+                         :datoms []
                          :account-deltas []
                          :transaction transaction}
                         (group-by :transaction-item/account items))
         account-adjustments (-> context :account-deltas finalize-account-adjustments)]
     (cons transaction
-          (concat (:adjusted-items context)
-                  (:adjusted-accounts context)
+          (concat (:datoms context)
                   account-adjustments))))
 
 (defn resolve-transaction-item-data
