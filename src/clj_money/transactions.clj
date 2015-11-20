@@ -241,9 +241,22 @@
   [db account-token items transaction]
   (let [{account-id :db/id :as account} (resolve-account db account-token)
         context (init-item-processing-context db account-id transaction)
+        unique-ids (->> items
+                        (map :db/id)
+                        (remove map?)
+                        (into #{}))
         all-items (->> (get-transaction-items-after db account-id (:start-date context))
+
+                       ; remove updated items from the existing items
+                       (remove #(unique-ids (-> % first :db/id)))
+
+                       ; add transaction to updated items so each list member is the same shape
                        (concat (map #(vector % transaction) items))
+
+                       ; sort by transaction date
                        (sort-by (comp :transaction/date second))
+
+                       ; strip off the transactions (leave the transaction items)
                        (map first))
         {:keys [current-items
                 last-balance
