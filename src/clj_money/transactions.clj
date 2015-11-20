@@ -299,14 +299,26 @@
         (update :datoms concat datoms)
         (update :account-deltas concat account-deltas))))
 
+(defn aggregate
+  "Given a sequence, a key function, a value function, and an
+  aggregating function, returns a map containing the resulting
+  keys and aggregated values."
+  [key-fn val-fn aggr-fn items]
+  (reduce (fn [result item]
+            (let [k (key-fn item)
+                  v (val-fn item)]
+              (if (contains? result k)
+                (update result k aggr-fn v)
+                (assoc result k v))))
+          {}
+          items))
+
 (defn finalize-account-adjustments
   [account-deltas]
   (->> account-deltas
-       (reduce (fn [acc [account delta]]
-                 (if (contains? acc account)
-                   (update acc account + delta)
-                   (assoc acc account delta)))
-               {})
+       ; sum deltas by account
+       (aggregate first second +)
+       ; map into datoms
        (map (fn [[account adjustment]]
               [:db/add (:db/id account)
                :account/balance (+ (:account/balance account) adjustment)]))))
