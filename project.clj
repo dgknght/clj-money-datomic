@@ -20,4 +20,4 @@
   :main ^:skip-aot clj-money.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}}
-  :plugins [[lein-expectations "0.0.7"]])
+  :plugins [[cider/cider-nrepl "0.9.1"]])
