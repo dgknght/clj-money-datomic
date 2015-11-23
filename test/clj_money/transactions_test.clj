@@ -613,4 +613,34 @@
           groceries-after (resolve-account (d/db conn) "Groceries")]
       (is (= 0M (:account/balance groceries-after)))
       (is (= 100M (:account/balance gasoline-after)))))
-  (testing "When a transaction date is updated, all transaction item indexes are updated" (is false)))
+  (testing "When a transaction date is updated, all transaction item indexes are updated"
+    (let [conn (new-test-db)
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-04"
+                                          :transaction/description "Kroger"
+                                          :amount 100M
+                                          :debit-account "Groceries"
+                                          :credit-account "Checking"})
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-11"
+                                          :transaction/description "Kroger"
+                                          :amount 100M
+                                          :debit-account "Groceries"
+                                          :credit-account "Checking"})
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-15"
+                                          :transaction/description "Paycheck"
+                                          :amount 1000M
+                                          :debit-account "Checking"
+                                          :credit-account "Salary"})
+          tx (->> (get-transactions (d/db conn))
+                  (filter #(= #inst "2015-01-15" (:transaction/date %)))
+                  first)
+          updated-tx (assoc tx :transaction/date #inst "2015-01-01")
+          _ (update-transaction conn updated-tx)
+          checking (resolve-account (d/db conn) "Checking")
+          checking-items (->> (get-account-transaction-items (d/db conn) (:db/id checking))
+                              (map #(vector (-> % second :transaction/date)
+                                            (-> % first :transaction-item/index)
+                                            (-> % first :transaction-item/balance))))]
+      (is (= [[#inst "2015-01-11" 2 800M]
+              [#inst "2015-01-04" 1 900M]
+              [#inst "2015-01-01" 0 1000M]]
+             checking-items)))))
