@@ -644,3 +644,50 @@
               [#inst "2015-01-04" 1 900M]
               [#inst "2015-01-01" 0 1000M]]
              checking-items)))))
+
+(defn get-account-transaction-item
+  [transaction account]
+  (->> transaction
+       :transaction/items
+       (filter #(= (:db/id (:transaction-item/account %)) (:db/id account)))
+       first))
+
+(deftest add-an-item
+  (testing "When an item is added to an existing transaction, all balances are updated correctly"
+    (let [conn (new-test-db)
+          ; Add a couple of transactions
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
+                                          :transaction/description "Paycheck"
+                                          :amount 1000M
+                                          :debit-account "Checking"
+                                          :credit-account "Salary"})
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-04"
+                                          :transaction/description "Kroger"
+                                          :amount 100M
+                                          :debit-account "Groceries"
+                                          :credit-account "Checking"})
+
+          ; Update the first by adding an item
+          trans (->> (get-transactions (d/db conn))
+                     (filter #(= #inst "2015-01-01" (:transaction/date %)))
+                     first)
+          checking (resolve-account (d/db conn) "Checking")
+          salary (resolve-account (d/db conn) "Salary")
+          checking-item (get-account-transaction-item trans checking)
+          salary-item (get-account-transaction-item trans salary)
+          updated-trans (assoc trans :transaction/items [(assoc checking-item :transaction-item/amount 800M)
+                                                         {:transaction-item/account "Taxes/Federal"
+                                                          :transaction-item/amount 200M
+                                                          :transaction-item/action :transaction-item.action/debit}
+                                                         salary-item])
+          _ (update-transaction conn updated-trans)
+
+          ; check the account balances
+          checking-balance (:account/balance (resolve-account (d/db conn) "Checking"))
+          salary-balance (:account/balance (resolve-account (d/db conn) "Salary"))
+          federal-balance (:account/balance (resolve-account (d/db conn) "Taxes/Federal"))]
+      (is (= 700M checking-balance))
+      (is (= 1000M salary-balance))
+      (is (= 200M federal-balance)))))
+
+; TODO remove-an-item
