@@ -364,7 +364,9 @@
       (resolve-transaction-data db)
       (update :transaction/date #(coerce/to-date %))
       (update :transaction/items (fn [items]
-                                   (map #(assoc % :db/id (d/tempid :db.part/user)) items)))))
+                                   (map #(if (:db/id %)
+                                           %
+                                           (assoc % :db/id (d/tempid :db.part/user))) items)))))
 
 (defn add-transaction
   "Adds a new transaction to the system"
@@ -380,17 +382,6 @@
         tempids (:tempids result)]
     (d/resolve-tempid (d/db conn) tempids new-id)))
 
-(defn resolve-references
-  "Looks up account references in the transaction data and replaced when with entity ID values"
-  [db transaction-data]
-  (update transaction-data
-          :transaction/items
-          (fn [items]
-            (map (fn [item] (if (string? (:transaction-item/account item))
-                              (update item :transaction-item/account (partial resolve-account-id db))
-                              item))
-                 items))))
-
 (defn remove-balance-and-index
   "Removes the existing balance and index attributes from line
   items so that they can be recalculated as part of an update"
@@ -405,7 +396,7 @@
   [conn data]
   (let [db (d/db conn)
         tx-data (->> data
-                     (resolve-references db)
+                     (prepare-transaction-data db)
                      (remove-balance-and-index)
                      (append-balance-adjustment-tx-data db))]
     @(d/transact conn tx-data)))
