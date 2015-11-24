@@ -304,9 +304,8 @@
         children-datoms (map #(delta->datom % :account/children-balance) children-deltas)]
     (concat balance-datoms children-datoms)))
 
-(defn append-balance-adjustment-tx-data
-  "Appends the datomic transaction commands necessary to adjust balances 
-  for the transaction"
+(defn balance-adjustment-datoms
+  "Calculates the adjustment datoms for the specified transaction"
   [db {items :transaction/items :as transaction}]
   (let [context (reduce transaction-item-group-adjustments
                         {:db db
@@ -315,9 +314,14 @@
                          :transaction transaction}
                         (group-by :transaction-item/account items))
         account-adjustments (->> context :account-deltas (finalize-account-adjustments db))]
-    (cons transaction
-          (concat (:datoms context)
-                  account-adjustments))))
+    (concat (:datoms context)
+            account-adjustments)))
+
+(defn append-balance-adjustment-datoms
+  "Appends the datomic transaction commands necessary to adjust balances 
+  for the transaction"
+  [db transaction]
+  (cons transaction (balance-adjustment-datoms db transaction)))
 
 (defn resolve-transaction-item-data
   "Resolves references inside transaction item data"
@@ -354,7 +358,7 @@
         tx-data (->> data
                      (prepare-transaction-data db)
                      (merge {:db/id new-id})
-                     (append-balance-adjustment-tx-data db))
+                     (append-balance-adjustment-datoms db))
         result @(d/transact conn tx-data)
         tempids (:tempids result)]
     (d/resolve-tempid (d/db conn) tempids new-id)))
@@ -375,7 +379,7 @@
         tx-data (->> data
                      (prepare-transaction-data db)
                      (remove-balance-and-index)
-                     (append-balance-adjustment-tx-data db))]
+                     (append-balance-adjustment-datoms db))]
     @(d/transact conn tx-data)))
 
 (defn add-simple-transaction
