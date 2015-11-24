@@ -271,51 +271,36 @@
                                                      (:transaction context))]
     (update context :datoms concat datoms)))
 
-(defn aggregate
-  "Given a sequence, a key function, a value function, and an
-  aggregating function, returns a map containing the resulting
-  keys and aggregated values."
-  [key-fn val-fn aggr-fn items]
-  (reduce (fn [result item]
-            (let [k (key-fn item)
-                  v (val-fn item)]
-              (if (contains? result k)
-                (update result k aggr-fn v)
-                (assoc result k v))))
-          {}
-          items))
+(defn process-dereferenced-accounts
+  "Given a context with a list of datoms, returns the context including
+  the datoms necessary to account for any accounts that used to be referenced
+  by the transaction, but no longer are.
 
-(defn delta->datom
-  "Given an account delta, return a datom for transacting"
-  [[account delta] attribute]
-  [:db/add (:db/id account) attribute (+ (attribute account) delta)])
+  The method works with the same context as transaction-item-group-adjustments."
+  [context]
+  context)
 
-(defn finalize-account-adjustments
-  [db account-deltas]
-  (let [balance-deltas (aggregate first second + account-deltas)
-        balance-datoms (map #(delta->datom % :account/balance) balance-deltas)
-        children-deltas (->> balance-deltas
-                             (reduce (fn [result [account delta]]
-                                       (concat result
-                                               (map #(vector % delta)
-                                                    (rest (get-account-with-parents db account)))))
-                                     [])
-                             (aggregate first second +))
-        children-datoms (map #(delta->datom % :account/children-balance) children-deltas)]
-    (concat balance-datoms children-datoms)))
+(defn process-parent-accounts
+  "Given a context with list of datoms, returns the context including
+  the datoms necessary to account for adjustments to parent accounts
+  based on changes in leaf accounts.
+
+  The function words with the same context as transaction-item-group-adjustments."
+  [context]
+  context)
 
 (defn balance-adjustment-datoms
   "Calculates the adjustment datoms for the specified transaction"
   [db {items :transaction/items :as transaction}]
-  (let [context (reduce transaction-item-group-adjustments
-                        {:db db
-                         :datoms []
-                         :account-deltas []
-                         :transaction transaction}
-                        (group-by :transaction-item/account items))
-        account-adjustments (->> context :account-deltas (finalize-account-adjustments db))]
-    (concat (:datoms context)
-            account-adjustments)))
+  (let [context {:db db
+                 :datoms []
+                 :transaction transaction}]
+    (->> items
+         (group-by :transaction-item/account)
+         (reduce transaction-item-group-adjustments context)
+         process-dereferenced-accounts
+         process-parent-accounts
+         :datoms)))
 
 (defn append-balance-adjustment-datoms
   "Appends the datomic transaction commands necessary to adjust balances 
@@ -326,7 +311,7 @@
 (defn resolve-transaction-item-data
   "Resolves references inside transaction item data"
   [db data]
-  (assoc-in data [:transaction-item/account] (:db/id (resolve-account db (:transaction-item/account data)))))
+  (update data :transaction-item/account #(:db/id (resolve-account db %))))
 
 (defn resolve-transaction-data
   "Resolves references inside transaction data"
