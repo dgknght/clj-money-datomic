@@ -196,26 +196,6 @@
           context
           items))
 
-(defn dereferenced-account-deltas
-  "Given a list of items, returns any account deltas to the given
-  list for any items for which the account has changed such that the
-  account no longer referended by the transaction item will have
-  the correct balance"
-  [db items]
-  (->> items
-       (remove #(map? (:db/id %)))
-       (reduce (fn [deltas item]
-                 (let [old-item (find-transaction-item db (:db/id item))]
-                   (when (not= 1 (->> [old-item item]
-                                      (map :transaction-item/account)
-                                      (map :db/id)
-                                      (into #{})
-                                      count))
-                     (let [account (:transaction-item/account old-item)
-                           delta (- 0 (polarized-amount db account old-item))]
-                       (conj deltas [account delta])))))
-               [])))
-
 (defn init-item-processing-context
   "Initializes the processing context for a sequence of items
   from an account.
@@ -250,9 +230,8 @@
 
 (defn transaction-item-balance-adjustments
   "Given all transaction items for an account withing a transaction,
-  account-id, and transaction date, returns a map containing:
-  :datoms         - The datoms ready to be transacted (item index and balance values)
-  :account-deltas - Changes to be aggregated and applied to accounts"
+  account-id, and transaction date, returns the datoms necessary to adjust
+  balances for the item and the account"
   [db account-token items transaction]
   (let [{account-id :db/id :as account} (resolve-account db account-token)
         context (init-item-processing-context db account-id transaction)
@@ -275,11 +254,8 @@
                        (map first))
         {:keys [last-balance
                 datoms]} (process-items context account all-items)
-        account-adjustment  (- last-balance (:account/balance account))
-        account-deltas      (cons [account account-adjustment]
-                                  (dereferenced-account-deltas db items))]
-    {:datoms datoms
-     :account-deltas account-deltas}))
+        account-datom [:db/add account-id :account/balance last-balance]]
+    (cons account-datom datoms)))
 
 (defn transaction-item-group-adjustments
   "Processes all transaction items in a transaction having the save account
@@ -287,17 +263,13 @@
   Accepts and returns a context with the following values
     :db             - The database state before the transaction is applied
     :datoms         - Datoms ready to be transacted to the data store
-    :account-deltas - Changes to be aggregated and applied to accounts
     :transaction    - The transaction to being processed"
   [context [account-id items]]
-  (let [{:keys [datoms
-                account-deltas]} (transaction-item-balance-adjustments (:db context)
-                                                                       account-id
-                                                                       items
-                                                                       (:transaction context))]
-    (-> context
-        (update :datoms concat datoms)
-        (update :account-deltas concat account-deltas))))
+  (let [datoms (transaction-item-balance-adjustments (:db context)
+                                                     account-id
+                                                     items
+                                                     (:transaction context))]
+    (update context :datoms concat datoms)))
 
 (defn aggregate
   "Given a sequence, a key function, a value function, and an
