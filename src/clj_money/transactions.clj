@@ -357,6 +357,13 @@
   [data db]
   (assoc-in data [:transaction/items] (map #(resolve-transaction-item-data db %) (:transaction/items data))))
 
+(defn append-temp-id
+  "Appends a temporary id to the specified map, if one is not already present"
+  [value]
+  (if (:db/id value)
+    value
+    (assoc value :db/id (d/tempid :db.part/user))))
+
 (defn prepare-transaction-data
   "Takes the raw transaction data and makes it ready use with d/transact"
   [db data]
@@ -364,9 +371,7 @@
       (resolve-transaction-data db)
       (update :transaction/date #(coerce/to-date %))
       (update :transaction/items (fn [items]
-                                   (map #(if (:db/id %)
-                                           %
-                                           (assoc % :db/id (d/tempid :db.part/user))) items)))))
+                                   (map #(append-temp-id %) items)))))
 
 (defn add-transaction
   "Adds a new transaction to the system"
