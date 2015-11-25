@@ -278,7 +278,9 @@
       (is (= [[#inst "2015-01-11" 2 800M]
               [#inst "2015-01-04" 1 900M]
               [#inst "2015-01-01" 0 1000M]]
-             checking-items))))
+             checking-items)))))
+
+(deftest update-a-transaction-item-account
   (testing "When a transaction item account is updated, balances are adjusted for the old account and the new account"
     (let [conn (new-test-db)
           _ (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
