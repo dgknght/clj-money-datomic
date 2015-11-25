@@ -3,6 +3,7 @@
             [clojure.tools.logging :as log]
             [clojure.pprint :refer [pprint]]
             [clojure.set :refer [difference union]]
+            [clj-money.common :refer [meta-filter]]
             [clj-time.core :as t]
             [clj-time.coerce :as coerce])
   (:use clj-money.common
@@ -260,7 +261,7 @@
                         (map first))
          {:keys [last-balance
                  datoms]} (process-items context account all-items)
-         account-datom [:db/add account-id :account/balance last-balance]]
+         account-datom (with-meta [:db/add account-id :account/balance last-balance] {:entity-type :account})]
      (cons account-datom datoms))))
 
 (defn transaction-item-group-adjustments
@@ -314,8 +315,26 @@
   based on changes in leaf accounts.
 
   The function words with the same context as transaction-item-group-adjustments."
-  [context]
-  context)
+  [{:keys [db] :as context}]
+  (let [account-datoms (meta-filter :entity-type :account (:datoms context))
+        account-deltas (map (fn [[_ account-id _ balance]]
+                              (let [account (find-account db account-id)
+                                    delta (- balance (:account/balance account))]
+                                (vector account balance)))
+                            account-datoms)
+        parent-deltas (mapcat (fn [[account delta]]
+                                (map #(vector % delta) (rest (get-account-with-parents db account))))
+                              account-deltas)
+        aggregated-deltas (reduce (fn [result [account delta]]
+                                    (if (result account)
+                                      (update result account + delta)
+                                      (assoc result account delta)))
+                                  {}
+                                  parent-deltas)
+        datoms (map (fn [[account delta]]
+                      [:db/add (:db/id account) :account/children-balance (+ delta (:account/children-balance account))])
+                    aggregated-deltas)]
+    (update context :datoms concat datoms)))
 
 (defn balance-adjustment-datoms
   "Calculates the adjustment datoms for the specified transaction"
