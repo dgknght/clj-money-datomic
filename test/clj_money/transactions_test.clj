@@ -582,7 +582,8 @@
                                (select-keys t [:transaction/date])))
                       items)]
       (is (= expected
-             actual))))
+             actual)))))
+(deftest multiple-account-reference-update
   (testing "When a transaction with multiple items referencing the same account is saved, the transaction items are handled correctly."
     (let [conn (new-test-db)
           _ (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
