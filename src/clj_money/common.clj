@@ -39,3 +39,8 @@
        first
        (d/entity db)
        (d/touch)))
+
+(defn meta-filter
+  "Filters a sequence based on the specified meta-data"
+  [meta-key meta-value items]
+  (filter #(= meta-value (-> % meta meta-key)) items))
