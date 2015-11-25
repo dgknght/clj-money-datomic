@@ -193,6 +193,31 @@
           all-transactions (-> conn d/db get-transactions)]
       (is (= 1 (count all-transactions)))
       (is (= "Paycheck" (-> all-transactions first :transaction/description)))))
+  (testing "When a transaction item amount is updated, following transaction item balances are updated"
+    (let [conn (new-test-db)
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
+                                          :transaction/description "Paycheck"
+                                          :amount 1000M
+                                          :debit-account "Checking"
+                                          :credit-account "Salary"})
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-15"
+                                          :transaction/description "Paycheck"
+                                          :amount 1000M
+                                          :debit-account "Checking"
+                                          :credit-account "Salary"})
+          checking-before (resolve-account (d/db conn) "Checking")
+          tx (->> (get-transactions (d/db conn))
+                  (filter #(= #inst "2015-01-01" (:transaction/date %)))
+                  first)
+          updated-tx (-> tx
+                         (assoc-in [:transaction/items 0 :transaction-item/amount] 1100M)
+                         (assoc-in [:transaction/items 1 :transaction-item/amount] 1100M))
+          _ (update-transaction conn updated-tx)
+          fetched-tx (->> (get-transactions (d/db conn))
+                          (filter #(= #inst "2015-01-15" (:transaction/date %)))
+                          first)]
+      (is (= 2100M (-> fetched-tx :transaction/items first :transaction-item/balance)))
+      (is (= 2100M (-> fetched-tx :transaction/items second :transaction-item/balance)))))
   (testing "Account names are resolved to account IDs"
     (let [conn (create-empty-db)
           _ (create-update-test-transaction conn)
@@ -205,7 +230,77 @@
           _ (update-transaction conn updated-trans)
           all-transactions (-> conn d/db get-transactions)]
       (is (= 1 (count all-transactions)))
-      (is (= "Paycheck" (-> all-transactions first :transaction/description))))))
+      (is (= "Paycheck" (-> all-transactions first :transaction/description)))))
+  (testing "When a transaction item amount is updated, the corresponding account balance is updated"
+    (let [conn (new-test-db)
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
+                                          :transaction/description "Paycheck"
+                                          :amount 1000M
+                                          :debit-account "Checking"
+                                          :credit-account "Salary"})
+          checking-before (resolve-account (d/db conn) "Checking")
+          tx (first (get-transactions (d/db conn)))
+          updated-tx (-> tx
+                         (assoc-in [:transaction/items 0 :transaction-item/amount] 1100M)
+                         (assoc-in [:transaction/items 1 :transaction-item/amount] 1100M))
+          _ (update-transaction conn updated-tx)
+          checking (resolve-account (d/db conn) "Checking")
+          salary (resolve-account (d/db conn) "Salary")]
+      (is (= 1100M (:account/balance checking)))
+      (is (= 1100M (:account/balance salary)))))
+  (testing "When a transaction date is updated, all transaction item indexes are updated"
+    (let [conn (new-test-db)
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-04"
+                                          :transaction/description "Kroger"
+                                          :amount 100M
+                                          :debit-account "Groceries"
+                                          :credit-account "Checking"})
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-11"
+                                          :transaction/description "Kroger"
+                                          :amount 100M
+                                          :debit-account "Groceries"
+                                          :credit-account "Checking"})
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-15"
+                                          :transaction/description "Paycheck"
+                                          :amount 1000M
+                                          :debit-account "Checking"
+                                          :credit-account "Salary"})
+          tx (->> (get-transactions (d/db conn))
+                  (filter #(= #inst "2015-01-15" (:transaction/date %)))
+                  first)
+          updated-tx (assoc tx :transaction/date #inst "2015-01-01")
+          _ (update-transaction conn updated-tx)
+          checking (resolve-account (d/db conn) "Checking")
+          checking-items (->> (get-account-transaction-items (d/db conn) (:db/id checking))
+                              (map #(vector (-> % second :transaction/date)
+                                            (-> % first :transaction-item/index)
+                                            (-> % first :transaction-item/balance))))]
+      (is (= [[#inst "2015-01-11" 2 800M]
+              [#inst "2015-01-04" 1 900M]
+              [#inst "2015-01-01" 0 1000M]]
+             checking-items))))
+  (testing "When a transaction item account is updated, balances are adjusted for the old account and the new account"
+    (let [conn (new-test-db)
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
+                                          :transaction/description "Paycheck"
+                                          :amount 1000M
+                                          :debit-account "Checking"
+                                          :credit-account "Salary"})
+          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-04"
+                                          :transaction/description "Kroger"
+                                          :amount 100M
+                                          :debit-account "Groceries"
+                                          :credit-account "Checking"})
+          tx (->> (get-transactions (d/db conn))
+                  (filter #(= #inst "2015-01-04" (:transaction/date %)))
+                  first)
+          gasoline (resolve-account (d/db conn) "Gasoline")
+          updated-tx (assoc-in tx [:transaction/items 0 :transaction-item/account] (:db/id gasoline))
+          _ (update-transaction conn updated-tx)
+          gasoline-after (resolve-account (d/db conn) "Gasoline")
+          groceries-after (resolve-account (d/db conn) "Groceries")]
+      (is (= 0M (:account/balance groceries-after)))
+      (is (= 100M (:account/balance gasoline-after))))))
 
 (deftest get-transaction-items-for-an-account
   (let [conn (create-empty-db)
@@ -547,103 +642,6 @@
                                                           :transaction-item/amount 773.50M}]})
             children-balance (:account/children-balance (resolve-account (d/db conn) "Taxes"))]
         (is (= 226.50M children-balance))))))
-
-(deftest update-a-transaction
-  (testing "When a transaction item amount is updated, the corresponding account balance is updated"
-    (let [conn (new-test-db)
-          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
-                                          :transaction/description "Paycheck"
-                                          :amount 1000M
-                                          :debit-account "Checking"
-                                          :credit-account "Salary"})
-          checking-before (resolve-account (d/db conn) "Checking")
-          tx (first (get-transactions (d/db conn)))
-          updated-tx (-> tx
-                         (assoc-in [:transaction/items 0 :transaction-item/amount] 1100M)
-                         (assoc-in [:transaction/items 1 :transaction-item/amount] 1100M))
-          _ (update-transaction conn updated-tx)
-          checking (resolve-account (d/db conn) "Checking")
-          salary (resolve-account (d/db conn) "Salary")]
-      (is (= 1100M (:account/balance checking)))
-      (is (= 1100M (:account/balance salary)))))
-  (testing "When a transaction item amount is updated, following transaction item balances are updated"
-    (let [conn (new-test-db)
-          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
-                                          :transaction/description "Paycheck"
-                                          :amount 1000M
-                                          :debit-account "Checking"
-                                          :credit-account "Salary"})
-          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-15"
-                                          :transaction/description "Paycheck"
-                                          :amount 1000M
-                                          :debit-account "Checking"
-                                          :credit-account "Salary"})
-          checking-before (resolve-account (d/db conn) "Checking")
-          tx (->> (get-transactions (d/db conn))
-                  (filter #(= #inst "2015-01-01" (:transaction/date %)))
-                  first)
-          updated-tx (-> tx
-                         (assoc-in [:transaction/items 0 :transaction-item/amount] 1100M)
-                         (assoc-in [:transaction/items 1 :transaction-item/amount] 1100M))
-          _ (update-transaction conn updated-tx)
-          fetched-tx (->> (get-transactions (d/db conn))
-                          (filter #(= #inst "2015-01-15" (:transaction/date %)))
-                          first)]
-      (is (= 2100M (-> fetched-tx :transaction/items first :transaction-item/balance)))
-      (is (= 2100M (-> fetched-tx :transaction/items second :transaction-item/balance)))))
-  (testing "When a transaction item account is updated, balances are adjusted for the old account and the new account"
-    (let [conn (new-test-db)
-          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
-                                          :transaction/description "Paycheck"
-                                          :amount 1000M
-                                          :debit-account "Checking"
-                                          :credit-account "Salary"})
-          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-04"
-                                          :transaction/description "Kroger"
-                                          :amount 100M
-                                          :debit-account "Groceries"
-                                          :credit-account "Checking"})
-          tx (->> (get-transactions (d/db conn))
-                  (filter #(= #inst "2015-01-04" (:transaction/date %)))
-                  first)
-          gasoline (resolve-account (d/db conn) "Gasoline")
-          updated-tx (assoc-in tx [:transaction/items 0 :transaction-item/account] (:db/id gasoline))
-          _ (update-transaction conn updated-tx)
-          gasoline-after (resolve-account (d/db conn) "Gasoline")
-          groceries-after (resolve-account (d/db conn) "Groceries")]
-      (is (= 0M (:account/balance groceries-after)))
-      (is (= 100M (:account/balance gasoline-after)))))
-  (testing "When a transaction date is updated, all transaction item indexes are updated"
-    (let [conn (new-test-db)
-          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-04"
-                                          :transaction/description "Kroger"
-                                          :amount 100M
-                                          :debit-account "Groceries"
-                                          :credit-account "Checking"})
-          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-11"
-                                          :transaction/description "Kroger"
-                                          :amount 100M
-                                          :debit-account "Groceries"
-                                          :credit-account "Checking"})
-          _ (add-simple-transaction conn {:transaction/date #inst "2015-01-15"
-                                          :transaction/description "Paycheck"
-                                          :amount 1000M
-                                          :debit-account "Checking"
-                                          :credit-account "Salary"})
-          tx (->> (get-transactions (d/db conn))
-                  (filter #(= #inst "2015-01-15" (:transaction/date %)))
-                  first)
-          updated-tx (assoc tx :transaction/date #inst "2015-01-01")
-          _ (update-transaction conn updated-tx)
-          checking (resolve-account (d/db conn) "Checking")
-          checking-items (->> (get-account-transaction-items (d/db conn) (:db/id checking))
-                              (map #(vector (-> % second :transaction/date)
-                                            (-> % first :transaction-item/index)
-                                            (-> % first :transaction-item/balance))))]
-      (is (= [[#inst "2015-01-11" 2 800M]
-              [#inst "2015-01-04" 1 900M]
-              [#inst "2015-01-01" 0 1000M]]
-             checking-items)))))
 
 (defn get-account-transaction-item
   [transaction account]
