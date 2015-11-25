@@ -2,6 +2,7 @@
   (:require [datomic.api :as d :refer [tempid q db transact pull-many pull]]
             [clojure.tools.logging :as log]
             [clojure.pprint :refer [pprint]]
+            [clojure.set :refer [difference union]]
             [clj-time.core :as t]
             [clj-time.coerce :as coerce])
   (:use clj-money.common
@@ -231,31 +232,36 @@
 (defn transaction-item-balance-adjustments
   "Given all transaction items for an account withing a transaction,
   account-id, and transaction date, returns the datoms necessary to adjust
-  balances for the item and the account"
-  [db account-token items transaction]
-  (let [{account-id :db/id :as account} (resolve-account db account-token)
-        context (init-item-processing-context db account-id transaction)
-        unique-ids (->> items
-                        (map :db/id)
-                        (remove map?)
-                        (into #{}))
-        all-items (->> (get-transaction-items-after db account-id (:start-date context))
+  balances for the item and the account.
 
-                       ; remove updated items from the existing items
-                       (remove #(unique-ids (-> % first :db/id)))
+  When processing a deferenced account, include in the 'except' parameter
+  the IDs of the transaction items that no longer reference this account"
+  ([db account-token items transaction] (transaction-item-balance-adjustments db account-token items transaction #{}))
+  ([db account-token items transaction except]
+   (let [{account-id :db/id :as account} (resolve-account db account-token)
+         context (init-item-processing-context db account-id transaction)
+         unique-ids (->> items
+                         (map :db/id)
+                         (remove map?)
+                         (into #{})
+                         (union except))
+         all-items (->> (get-transaction-items-after db account-id (:start-date context))
 
-                       ; add transaction to updated items so each list member is the same shape
-                       (concat (map #(vector % transaction) items))
+                        ; remove updated items from the existing items
+                        (remove #(unique-ids (-> % first :db/id)))
 
-                       ; sort by transaction date
-                       (sort-by (comp :transaction/date second))
+                        ; add transaction to updated items so each list member is the same shape
+                        (concat (map #(vector % transaction) items))
 
-                       ; strip off the transactions (leave the transaction items)
-                       (map first))
-        {:keys [last-balance
-                datoms]} (process-items context account all-items)
-        account-datom [:db/add account-id :account/balance last-balance]]
-    (cons account-datom datoms)))
+                        ; sort by transaction date
+                        (sort-by (comp :transaction/date second))
+
+                        ; strip off the transactions (leave the transaction items)
+                        (map first))
+         {:keys [last-balance
+                 datoms]} (process-items context account all-items)
+         account-datom [:db/add account-id :account/balance last-balance]]
+     (cons account-datom datoms))))
 
 (defn transaction-item-group-adjustments
   "Processes all transaction items in a transaction having the save account
@@ -271,14 +277,36 @@
                                                      (:transaction context))]
     (update context :datoms concat datoms)))
 
+(defn referenced-accounts
+  "Given a transaction, returns the referenced accounts"
+  [transaction]
+  (->> transaction
+       :transaction/items
+       (map :transaction-item/account)
+       (map #(if (:db/id %) (:db/id %) %))
+       (into #{})))
+
 (defn process-dereferenced-accounts
   "Given a context with a list of datoms, returns the context including
   the datoms necessary to account for any accounts that used to be referenced
   by the transaction, but no longer are.
 
   The method works with the same context as transaction-item-group-adjustments."
-  [context]
-  context)
+  [{:keys [datoms transaction db] :as context}]
+  (if (map? (:db/id transaction)) ; no need to process a new transaction
+    context
+    (let [original-trans (get-transaction db (:db/id transaction))
+          original-account-ids (referenced-accounts original-trans)
+          new-account-ids (referenced-accounts transaction)
+          dereferenced-accounts (difference original-account-ids new-account-ids)
+          datoms (mapcat (fn [account-id]
+                           (transaction-item-balance-adjustments db account-id [] transaction (->> original-trans
+                                                                                                   :transaction/items
+                                                                                                   (filter #(= account-id (:db/id (:transaction-item/account %))))
+                                                                                                   (map :db/id)
+                                                                                                   (into #{}))))
+                         dereferenced-accounts)]
+      (update context :datoms concat datoms))))
 
 (defn process-parent-accounts
   "Given a context with list of datoms, returns the context including
