@@ -43,14 +43,16 @@
              [:a.btn.btn-default {:href "/accounts"} "Back"]]))))
 
 (defn account-row
-  [{:keys [style caption depth account-type] {id :db/id balance :account/balance} :account :as display-record}]
+  [{:keys [style caption depth account-type value]
+    {id :db/id balance :account/balance children-balance :account/children-balance} :account
+    :as display-record}]
   [:tr
    (if (= :header style)
      [:th.col-md-5 caption]
      [:td
       [:div {:class (str "depth-" depth)}
        [:a {:href (str "/accounts/" id)} caption]]])
-   [:td.col-md-5.text-right (util/format-number balance)]
+   [:td.col-md-5.text-right (util/format-number value)]
    [:td.col-md-2
     [:div.pull-left
      [:a.btn.btn-link.btn-sm {:href (str "/accounts/" id "/edit")}

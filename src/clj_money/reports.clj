@@ -7,6 +7,7 @@
         clojure.set)
   (:require [clojure.string :as string]
             [clojure.pprint :refer [pprint]]
+            [clojure.tools.logging :as log]
             [clj-time.coerce :as c]
             [clj-time.core :as t])
   (:gen-class))
@@ -161,7 +162,9 @@
        (map #(hash-map :account %
                        :caption (:account/name %)
                        :account-type (:account/type %)
-                       :style :data))
+                       :style :data
+                       :value (reduce + 0M (map (fn [k] (k %)) [:account/balance :account/children-balance]))
+                       ))
        (map (fn [{account :account :as record}]
               (assoc record :path (calculate-path-with-list account all-accounts))))
        (sort-by :path)
@@ -178,7 +181,8 @@
           (mapcat (fn [[account-type record-group]]
                     (cons {:caption (account-type account-type-caption-map)
                            :style :header
-                           :depth 0}
+                           :depth 0
+                           :value (reduce + 0M (map :value record-group))}
                           record-group)))))))
 
 (defn account-list-with-headers
