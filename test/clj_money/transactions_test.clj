@@ -77,7 +77,28 @@
                                                     :transaction-item/account "Salary"
                                                     :transaction-item/amount 1000M}]})
           transaction (get-transaction (d/db conn) id)]
-      (is (= "Paycheck" (:transaction/description transaction))))))
+      (is (= "Paycheck" (:transaction/description transaction)))))
+  (testing "When I add a transaction that references child accounts, the parent accounts are updated."
+    (let [conn (new-test-db)
+          _ (add-transaction conn {:transaction/date #inst "2015-01-01"
+                                   :transaction/description "Paycheck"
+                                   :transaction/items [{:transaction-item/action :transaction-item.action/credit
+                                                        :transaction-item/account "Salary"
+                                                        :transaction-item/amount 1000M}
+                                                       {:transaction-item/action :transaction-item.action/debit
+                                                        :transaction-item/account "Checking"
+                                                        :transaction-item/amount 773.50M}
+                                                       {:transaction-item/action :transaction-item.action/debit
+                                                        :transaction-item/account "Taxes/Federal"
+                                                        :transaction-item/amount 150M}
+                                                       {:transaction-item/action :transaction-item.action/debit
+                                                        :transaction-item/account "Taxes/Social security"
+                                                        :transaction-item/amount 62M}
+                                                       {:transaction-item/action :transaction-item.action/debit
+                                                        :transaction-item/account "Taxes/Medicare"
+                                                        :transaction-item/amount 14.50M}]})
+          taxes-balance (->> "Taxes" (resolve-account (d/db conn)) :account/children-balance)]
+      (is (= 226.50M taxes-balance)))))
 
 (deftest a-transaction-must-be-in-balance
   (testing "An imbalanced transaction cannot be saved"
