@@ -364,12 +364,12 @@
       (let [asc-result (get-account-transaction-items (d/db conn) checking-id {:sort-order :asc})]
         (is (= [#inst "2015-08-15" #inst "2015-09-01" #inst "2015-09-02" #inst "2015-09-15"]
                (map #(-> % second :transaction/date) asc-result)))))
-    (testing "When a single date is specified, it returns all transactions since (and including) that date"
-      (let [since-9-1 (get-account-transaction-items (d/db conn) checking-id #inst "2015-09-01" {})]
+    (testing "When a :start-date is specified, it returns all transactions since (and including) that date"
+      (let [since-9-1 (get-account-transaction-items (d/db conn) checking-id {:start-date #inst "2015-09-01"})]
         (is (= [#inst "2015-09-15" #inst "2015-09-02" #inst "2015-09-01"]
                (map #(-> % second :transaction/date) since-9-1)))))
-    (testing "When two dates are specified, it returns all transactions between the two dates, inclusively"
-      (let [between-dates (get-account-transaction-items (d/db conn) checking-id #inst "2015-08-01" #inst "2015-09-01" {})]
+    (testing "When :start-date and :end-date are specified, it returns all transactions between the two dates, inclusively"
+      (let [between-dates (get-account-transaction-items (d/db conn) checking-id {:start-date #inst "2015-08-01" :end-date #inst "2015-09-01"})]
         (is (= [#inst "2015-09-01" #inst "2015-08-15"]
                (map #(-> % second :transaction/date) between-dates)))))))
 

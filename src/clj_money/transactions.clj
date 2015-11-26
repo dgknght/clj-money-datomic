@@ -87,6 +87,8 @@
          (sort-by #(-> % first :transaction-item/index) sort-compare))))
 
 (def default-get-account-transaction-item-options {:sort-order :desc
+                                                   :start-date min-date
+                                                   :end-date max-date
                                                    :inclusive? true})
 
 (defn get-account-transaction-items
@@ -95,11 +97,9 @@
   The date should be specified as a clj-time (joda) date time. It will be converted to
   a java date for the purpose of the query."
   ([db account-id] (get-account-transaction-items db account-id {}))
-  ([db account-id options] (get-account-transaction-items db account-id min-date options))
-  ([db account-id start-date options] (get-account-transaction-items db account-id start-date max-date options))
-  ([db account-id start-date end-date options]
-   (let [options (merge default-get-account-transaction-item-options options)
-         query (if (:inclusive? options)
+  ([db account-id options]
+   (let [{:keys [start-date end-date inclusive?]} (merge default-get-account-transaction-item-options options)
+         query (if inclusive?
                  '[:find ?ti ?t
                    :in $ ?account-id ?start-date ?end-date
                    :where [?ti :transaction-item/account ?account-id]
@@ -150,11 +150,15 @@
 
 (defn get-last-transaction-item-before
   [db account-id transaction-date]
-  (ffirst (get-account-transaction-items db account-id min-date transaction-date {:sort-order :desc :inclusive? false})))
+  (ffirst (get-account-transaction-items db account-id {:start-date min-date
+                                                        :end-date transaction-date
+                                                        :sort-order :desc
+                                                        :inclusive? false})))
 
 (defn get-transaction-items-after
   [db account-id transaction-date]
-  (get-account-transaction-items db account-id transaction-date max-date {:sort-order :asc}))
+  (get-account-transaction-items db account-id {:start-date transaction-date
+                                                :sort-order :asc}))
 
 (defn polarized-amount
   "Given a transaction item, returns the amount by which the corresponding
