@@ -455,3 +455,46 @@
               (+ result (* amount (polarizer account action))))
             (bigdec 0)
             amounts))))
+
+(defn recalculate-account-balance
+  "Recalculates the balances for the specified account, also recalculating
+  balances for any existing child accounts.
+
+  The input arguments are
+    context - a map containing
+      :db       - connection to the data store
+      :accounts - all accounts in the system
+      :datoms   - The list of datoms to be applied to the data store"
+  [{:keys [db] :as context} account]
+  (let [children (filter #(= account (:account/parent %)) (:accounts context))
+        context (reduce #(recalculate-account-balance %1 %2)
+                        context
+                        children)
+        items (map first (get-account-transaction-items db (:db/id account) {:sort-order :asc}))
+        {:keys [datoms last-balance]} (process-items {:db db :datoms [] :last-index -1N :last-balance 0M}
+                                                     account
+                                                     items)
+
+        ; use the datoms already created to calculate the children balance for the current account
+        children-balance (reduce + 0M (map (fn [child]
+                                             (->> (:datoms context)
+                                                  (filter (fn [[_ id attr]]
+                                                            (and (#{:account/balance :account/children-balance} attr)
+                                                                 (= (:db/id child) id))))
+                                                  (map #(% 3))
+                                                  (reduce + 0M)))
+                                           children))
+        account-datoms [[:db/add (:db/id account) :account/balance last-balance]
+                        [:db/add (:db/id account) :account/children-balance children-balance]]]
+    (update context :datoms concat account-datoms datoms)))
+
+(defn recalculate-all-account-balances
+  "Recalculates all item indexes, item balances, account balances and account children balances"
+  [conn]
+  (let [db (d/db conn)
+        accounts (all-accounts db)
+        root-accounts (remove #(:account/parent %) accounts)
+        {:keys [datoms]} (reduce recalculate-account-balance {:db db
+                                                              :accounts accounts
+                                                              :datoms []} root-accounts)]
+    (d/transact conn datoms)))
