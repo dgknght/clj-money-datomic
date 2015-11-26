@@ -174,6 +174,7 @@
   and also updates the last-balance and last-index values.
 
   The context is a map with the keys:
+    :db
     :datoms
     :last-index
     :last-balance"
