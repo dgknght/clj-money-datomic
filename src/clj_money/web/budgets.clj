@@ -7,6 +7,7 @@
             [hiccup.core :refer :all]
             [hiccup.page :refer :all]
             [clj-money.common :as common]
+            [clj-money.util :as util]
             [clj-money.budgets :as budgets]
             [clj-money.web.layouts :refer :all]))
 
@@ -75,7 +76,7 @@
   (-> html-params
       (rename-keys {:name :budget/name
                     :start-date :budget/start-date})
-      (update :budget/start-date common/parse-date)
+      (update :budget/start-date util/parse-date)
       (select-keys [:budget/name :budget/start-date])))
 
 (defn create-budget

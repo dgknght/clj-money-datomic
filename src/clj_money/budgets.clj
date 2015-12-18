@@ -32,16 +32,24 @@
                     (instance? org.joda.time.DateTime start-date) false
                     :else true)))
 
+(def validation-fns [#'missing-name?
+                     #'missing-start-date?
+                     #'invalid-start-date?])
+
 (defn validate-budget
   [budget]
-  (m/validate budget "The budget is not valid." [#'missing-name?
-                                                 #'missing-start-date?
-                                                 #'invalid-start-date?]))
+  (validate budget validation-fns))
+
+(defn validate-budget!
+  [budget]
+  (let [errors (validate-budget budget)]
+    (when (seq errors)
+      (throw (ex-info "The budget is not valid" {:budget budget :errors errors})))))
 
 (defn add-budget
   "Adds a new budget to the system"
   [conn budget]
-  (validate-budget budget)
+  (validate-budget! budget)
   (let [new-id (d/tempid :db.part/user)
         tx-data (assoc budget :db/id new-id)]
     @(d/transact conn [tx-data])))
