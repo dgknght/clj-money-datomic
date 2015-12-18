@@ -15,9 +15,29 @@
          db)
        (map #(m/hydrate-entity db %))))
 
+(defn ^{:validation-message "'Name' is a required field"} missing-name?
+  [budget]
+  (nil? (:budget/name budget)))
+
+(defn ^{:validation-message "'Start date' is a required field"} missing-start-date?
+  [budget]
+  (nil? (:budget/start-date budget)))
+
+(defn ^{:validation-message "'Start date' must be a valid date"} invalid-start-date?
+  [{start-date :budget/start-date}]
+  (and start-date
+       (not (= java.util.Date (type start-date)))))
+
+(defn validate-budget
+  [budget]
+  (m/validate budget "The budget is not valid." [#'missing-name?
+                                                 #'missing-start-date?
+                                                 #'invalid-start-date?]))
+
 (defn add-budget
   "Adds a new budget to the system"
   [conn budget]
+  (validate-budget budget)
   (let [new-id (d/tempid :db.part/user)
         tx-data (assoc budget :db/id new-id)]
     @(d/transact conn [tx-data])))

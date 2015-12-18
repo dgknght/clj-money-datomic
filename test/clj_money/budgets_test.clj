@@ -15,6 +15,17 @@
     (add-account conn {:account/name "Checking"  :account/type :account.type/asset})
     conn))
 
+(deftest validate-a-budget
+  (testing "a budget without a name is invalid"
+    (is (thrown-with-msg? RuntimeException #"not valid"
+                          (validate-budget {:budget/start-date #inst "2015-02-27"}))))
+  (testing "a budget without a start date is invalid"
+    (is (thrown-with-msg? RuntimeException #"not valid"
+                          (validate-budget {:budget/name "2016"}))))
+  (testing "a budget start date must be a DateTime"
+    (is (thrown-with-msg? RuntimeException #"not valid"
+                          (validate-budget {:budget/name "2016" :budget/start-date "not a date"})))))
+
 (deftest add-a-budget
   (testing "When I add a budget, it appears in the list of budgets"
     (let [conn (create-empty-db)
