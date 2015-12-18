@@ -19,7 +19,9 @@
       [:li
        [:a {:href "/accounts"} "Accounts"]]
       [:li
-       [:a {:href "/transactions"} "Transactions"]]]]]])
+       [:a {:href "/transactions"} "Transactions"]]
+      [:li
+       [:a {:href "/budgets"} "Budgets"]]]]]])
 
 (defn main-layout
   [title & content]
