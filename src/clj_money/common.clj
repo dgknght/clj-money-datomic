@@ -56,6 +56,5 @@
   rules is triggered, an exception is thrown containing information
   about the validation failure."
   [data message rule-fns]
-  (let [result (reduce apply-validation-fn {:data data :errors []} rule-fns)]
-    (if (seq (:errors result))
-      (throw (ex-info message result)))))
+  (let [{errors :errors} (reduce apply-validation-fn {:data data :errors []} rule-fns)]
+    errors))
