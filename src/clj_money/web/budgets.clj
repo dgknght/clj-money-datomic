@@ -100,7 +100,24 @@
 
 (defn show-budget
   [id]
-  (html "Show it!"))
+  (let [db (d/db (d/connect common/uri))
+        budget (budgets/find-budget db (Long. id))]
+    (main-layout
+      "Budget"
+      [:div.page-header
+       [:h1 (str "Budget: " (:budget/name budget))]]
+      [:div.row
+       [:div.col-md-12
+        [:table.table.table-striped.table-hover
+         [:tr
+          [:th "Account"]
+          [:th "Monthly Avg."]
+          [:th "Total"]]]]]
+      [:div.row
+       [:div.col-md-3
+        [:div.btn-group
+         [:a.btn.btn-primary {:href "/budget-items/new"} "Add item"]
+         [:a.btn.btn-default {:href "/budgets"} "Back"]]]])))
 
 (defn edit-budget
   [id]
