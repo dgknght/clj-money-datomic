@@ -58,5 +58,7 @@
                         :method "POST"
                         :style "margin: 0; padding: 0;"}
      (anti-forgery-field)
-     [:button.btn.btn-sm.btn-link {:type "submit" :title (str "Click here to delete the " model-type ".")}
+     [:button.btn.btn-sm.btn-link {:type "submit"
+                                   :title (str "Click here to delete the " model-type ".")
+                                   :onclick "return confirm('Are you sure you want to delete this item?');"}
       [:span.glyphicon.glyphicon-remove {:aria-hidden true}]]])
