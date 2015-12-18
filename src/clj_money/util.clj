@@ -79,3 +79,17 @@
   (let [w (java.io.StringWriter.)]
     (pprint data w)
     (.toString w)))
+
+(defn apply-validation-fn
+  [{:keys [data errors] :as context} validation-fn]
+  (if (validation-fn data)
+    (update context :errors conj (:validation-message (meta validation-fn)))
+    context))
+
+(defn validate
+  "Applies validation rules to a map. If any of the validation
+  rules is triggered, an exception is thrown containing information
+  about the validation failure."
+  [data rule-fns]
+  (let [{errors :errors} (reduce apply-validation-fn {:data data :errors []} rule-fns)]
+    errors))
