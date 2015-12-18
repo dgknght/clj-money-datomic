@@ -35,7 +35,7 @@
 
       [:meta  {:name "description" :content "Double-entry account system"}]
       [:meta  {:name "author" :content "Doug Knight"}]
-      [:link  {:rel "icon" :href "../../favicon.ico"}]
+      [:link  {:rel "icon" :href "/money_bag.ico"}]
       [:title (str "clj-money - " title)]
 
       "<!-- jQuery -->"
