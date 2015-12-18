@@ -3,20 +3,31 @@
             [clojure.data :refer [diff]]
             [clj-time.format :as f]
             [clj-time.coerce :as c]
+            [clj-time.core :as t]
             [clojure.tools.logging :as log]))
 
 (defn format-date
   [value]
   (f/unparse (:date f/formatters) (c/from-date value))) 
 
-(defn parse-date
-  [value] (->> value
-       (f/parse (:date f/formatters))
-       (c/to-date)))
+(def standard-date-format (f/formatter "M/d/yyyy"))
 
 (defn parse-date-time
-  [value]
-  (f/parse (:date-time f/formatters) value))
+  [string-date-time]
+  (if (re-matches #"\d{1,2}\/\d{1,2}\/\d{4}" string-date-time)
+    (f/parse standard-date-format string-date-time)
+    (c/from-string string-date-time)))
+
+(defn date-part
+  [date-time]
+  (t/date-time (t/year date-time) (t/month date-time) (t/day date-time)))
+
+(defn parse-date
+  [string-date]
+  (let [parsed (parse-date-time string-date)]
+    (if parsed
+      (date-part parsed)
+      nil)))
 
 (defn parse-long
   [value]
