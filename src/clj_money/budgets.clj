@@ -56,6 +56,11 @@
                     (update :budget/start-date c/to-date))]
     @(d/transact conn [tx-data])))
 
+(defn find-budget
+  "Returns the budget having the specified ID"
+  [db budget-id]
+  (d/entity db budget-id))
+
 (defn find-budget-by-name
   "Returns the budget having the specified name, or nil if no such budget was found"
   [db budget-name]
@@ -161,3 +166,16 @@
          (map #(append-budget-item-period-dates % budget-start-date))
          (filter (fn [{:keys [start-date end-date]}] (between? (c/from-date date) start-date end-date)))
          first)))
+
+(defn validate-budget-for-update!
+  [budget]
+  (let [errors (validate budget [#'invalid-start-date?])]
+    (when (seq errors)
+      (throw (ex-info "The budget is not valid" {:budget budget :errors errors})))))
+
+(defn update-budget
+  [conn budget]
+  (validate-budget-for-update! budget)
+  (let [tx-data (cond-> budget
+                  (:budget/start-date budget) (update :budget/start-date to-date))]
+    @(d/transact conn [tx-data])))

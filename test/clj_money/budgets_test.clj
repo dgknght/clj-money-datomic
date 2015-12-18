@@ -1,6 +1,8 @@
 (ns clj-money.budgets-test
   (:require [clojure.test :refer :all]
             [datomic.api :as d :refer [db touch]]
+            [clj-time.core :as time]
+            [clj-money.util :refer :all]
             [clj-money.budgets :refer :all]
             [clj-money.accounts :refer :all]
             [clj-money.common :refer :all])
@@ -28,7 +30,7 @@
   (testing "a budget start date can be a java.util.Date"
     (is (empty? (validate-budget budget-attributes))))
   (testing "a budget start date can be a org.joda.time.DateTime"
-    (is (empty? (validate-budget (assoc budget-attributes :budget/start-date (clj-time.core/date-time 2016 1 1))))))
+    (is (empty? (validate-budget (assoc budget-attributes :budget/start-date (time/date-time 2016 1 1))))))
   (testing "a budget start date cannot be an unparsable string"
     (is (= ["A budget must have a valid start date"] (validate-budget (assoc budget-attributes :budget/start-date "notadate"))))))
 
@@ -135,3 +137,25 @@
                                  d/db
                                  (find-budget-item-period "2015" "Groceries" #inst "2015-03-02"))]
       (is (= 300M (:budget-item-period/amount budget-item-period))))))
+
+(deftest update-a-budget
+  (testing "A budget name can be updated"
+    (let [conn (prepare-db)
+          _ (add-budget conn {:budget/name "Twenty Fifteen"
+                              :budget/start-date #inst "2015-01-01"})
+          {budget-id :db/id} (find-budget-by-name (d/db conn) "Twenty Fifteen")
+          _ (update-budget conn {:db/id budget-id
+                                 :budget/name "2015" })
+          retrieved (find-budget (d/db conn) budget-id)]
+      (is (= "2015" (:budget/name retrieved)))
+      (is (= #inst "2015-01-01" (:budget/start-date retrieved)))))
+  (testing "A budget start date can be updated"
+    (let [conn (prepare-db)
+          _ (add-budget conn {:budget/name "2015"
+                              :budget/start-date #inst "2015-12-31"})
+          {budget-id :db/id} (find-budget-by-name (d/db conn) "2015")
+          _ (update-budget conn {:db/id budget-id
+                                 :budget/start-date #inst "2015-01-01"})
+          retrieved (into {} (find-budget-by-name (d/db conn) "2015"))]
+      (is (= "2015" (:budget/name retrieved)))
+      (is (= #inst "2015-01-01" (:budget/start-date retrieved))))))
