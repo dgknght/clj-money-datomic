@@ -24,7 +24,13 @@
                         {:account/name "Food"             :account/type :account.type/expense :account/parent "Groceries"}
                         {:account/name "Non-food"         :account/type :account.type/expense :account/parent "Groceries"}])
 
-    (add-budget conn "2015" #inst "2015-01-01")
+
+    (try
+    (add-budget conn {:budget/name "2015" :budget/start-date #inst "2015-01-01"})
+    (catch Exception e
+      (clojure.pprint/pprint (ex-data e))
+      (throw e)))
+
     (add-budget-item conn "2015" "Salary"             (repeat 12 1800M))
     (add-budget-item conn "2015" "Groceries/Food"     (repeat 12 245M))
     (add-budget-item conn "2015" "Groceries/Non-food" (repeat 12 150M))
