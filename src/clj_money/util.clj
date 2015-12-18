@@ -93,3 +93,12 @@
   [data rule-fns]
   (let [{errors :errors} (reduce apply-validation-fn {:data data :errors []} rule-fns)]
     errors))
+
+(defn to-date
+  "Takes the given object and ensures converts it to a java.util.Date if possible"
+  [obj]
+  (cond
+    (instance? java.lang.String obj) (parse-date-time obj)
+    (instance? org.joda.time.DateTime obj) (c/to-date obj)
+    (instance? java.util.Date obj) obj
+    :else (throw (ex-info "Unable to convert the value to a date" {:value obj}))))
