@@ -110,7 +110,7 @@
 (defn form-fields
   ([] (form-fields {}))
   ([{id :db/id account-type :account/type account-name :account/name {parent-id :db/id} :account/parent}]
-   [:div ; TODO This div is only here because this function returns a collection and that's what hiccup needs
+   (html
     (anti-forgery-field)
     [:div.form-group
      [:label {:for "account-type"} "Account Type"]
@@ -123,7 +123,7 @@
      [:label {:for "parent-id"} "Parent"]
      [:select.form-control {:id "parent-id" :name "parent-id"}
       [:option {:value ""} "--none--"]
-      (account-options-for-select parent-id {:except #{id}})]]]))
+      (account-options-for-select parent-id {:except #{id}})]])))
 
 (defn new-account
   "Renders a form that can be submitted to create a new account"
