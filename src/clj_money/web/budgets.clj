@@ -9,7 +9,8 @@
             [clj-money.common :as common]
             [clj-money.util :as util]
             [clj-money.budgets :as budgets]
-            [clj-money.web.layouts :refer :all]))
+            [clj-money.web.layouts :refer :all])
+  (:import java.lang.Long))
 
 (defn budget-row
   [{id :db/id budget-name :budget/name}]
@@ -18,9 +19,9 @@
     [:a {:href (str "/budgets/" id)} budget-name]]
    [:td
     [:div.pull-left
-     [:a.btn.btn-link.btn-sm {:href (str "/budgets/" id "/edit")}
+     [:a.btn.btn-link.btn-sm {:href (str "/budgets/" id "/edit") :title "Click here to edit the budget."}
       [:span.glyphicon.glyphicon-pencil {:aria-hidden true}]]]
-    (delete-form "budgets" id)]])
+    (delete-form "budget" id)]])
 
 (defn index-budgets
   []
@@ -45,22 +46,23 @@
     [:option "month"]))
 
 (defn form-fields
-  []
-  (html
-    (anti-forgery-field)
-    [:div.form-group
-     [:label.form-label {:for "name"} "Name"]
-     [:input.form-control {:type "text" :name "name" :id "name" :autofocus 1}]]
-    [:div.form-group
-     [:label.form-label {:for "start-date"} "Start date"]
-     [:input.form-control.date-field {:name "start-date" :id "start-date"}]]
-    #_[:div.form-group
-     [:label.form-label {:for "period"} "Period"]
-     [:select.form-control {:id "period" :name "period"}
-      (period-options)]]
-    #_[:div.form-group
-     [:label.form-label {:for "period-count"} "Period count"]
-     [:input.form-control {:type "number" :name "period-count" :id "period-count" :value 12}]]))
+  ([] (form-fields nil))
+  ([budget]
+   (html
+     (anti-forgery-field)
+     [:div.form-group
+      [:label.form-label {:for "name"} "Name"]
+      [:input.form-control {:type "text" :name "name" :id "name" :autofocus 1 :value (:budget/name budget)}]]
+     [:div.form-group
+      [:label.form-label {:for "start-date"} "Start date"]
+      [:input.form-control.date-field {:name "start-date" :id "start-date" :value (util/format-date (:budget/start-date budget))}]]
+     #_[:div.form-group
+        [:label.form-label {:for "period"} "Period"]
+        [:select.form-control {:id "period" :name "period"}
+         (period-options)]]
+     #_[:div.form-group
+        [:label.form-label {:for "period-count"} "Period count"]
+        [:input.form-control {:type "number" :name "period-count" :id "period-count" :value 12}]])))
 
 (defn new-budget
   []
@@ -76,7 +78,7 @@
         [:button.btn.btn-primary {:type "submit"} "Save"]
         [:a.btn.btn-default {:href "/budgets"} "Cancel"]]]]]))
 
-(defn prepare-params
+(defn budget-params
   [html-params]
   (-> html-params
       (rename-keys {:name :budget/name
@@ -88,7 +90,7 @@
   [params]
   (try
     (let [conn (d/connect common/uri)
-          budget (prepare-params params)]
+          budget (budget-params params)]
       (budgets/add-budget conn budget))
     (redirect "/budgets")
     (catch Exception e
@@ -102,11 +104,27 @@
 
 (defn edit-budget
   [id]
-  (html "Edit it!"))
+  (let [db (d/db (d/connect common/uri))
+        budget (budgets/find-budget db (Long. id))]
+    (main-layout
+      "Edit budget"
+      [:div.page-header
+       [:h1 "Edit budget"]]
+      [:div.row
+       [:div.col-md-3
+        [:form {:role "form" :action (str "/budgets/" id) :method "POST"}
+         (form-fields budget)
+         [:div.btn-group
+          [::button.btn.btn-primary {:type "submit"} "Save"]
+          [:a.btn.btn-default {:href "/budgets"} "Cancel"]]]]])))
 
 (defn update-budget
-  [params]
-  (html "Update it!"))
+  [budget-id params]
+  (let [id (Long. budget-id)
+        budget-params (assoc (budget-params params) :db/id id)
+        conn (d/connect common/uri)]
+    (budgets/update-budget conn budget-params)
+    (redirect "/budgets")))
 
 (defn delete-budget
   [id]
