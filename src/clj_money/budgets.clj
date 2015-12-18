@@ -51,7 +51,9 @@
   [conn budget]
   (validate-budget! budget)
   (let [new-id (d/tempid :db.part/user)
-        tx-data (assoc budget :db/id new-id)]
+        tx-data (-> budget
+                    (assoc :db/id new-id)
+                    (update :budget/start-date c/to-date))]
     @(d/transact conn [tx-data])))
 
 (defn find-budget-by-name

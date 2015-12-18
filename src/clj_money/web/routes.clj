@@ -29,5 +29,9 @@
   (GET "/budgets" [] (budgets/index-budgets))
   (GET "/budgets/new" [] (budgets/new-budget))
   (POST "/budgets" [:as {:keys [params]}] (budgets/create-budget params))
+  (GET "/budgets/:id" [id] (budgets/show-budget id))
+  (GET "/budgets/:id/edit" [id] (budgets/edit-budget id))
+  (POST "/budgets/:id" [id :as {params :params}] (budgets/update-budget id params))
+  (POST "/budgets/:id/delete" [id] (budgets/delete-budget id))
 
   (route/not-found (html [:h1 "Resource not found"])))

@@ -12,10 +12,15 @@
             [clj-money.web.layouts :refer :all]))
 
 (defn budget-row
-  [{id :db/id budget-name :name}]
+  [{id :db/id budget-name :budget/name}]
   [:tr
    [:td
-    [:a {:href (str "/budgets/" id)} budget-name]]])
+    [:a {:href (str "/budgets/" id)} budget-name]]
+   [:td
+    [:div.pull-left
+     [:a.btn.btn-link.btn-sm {:href (str "/budgets/" id "/edit")}
+      [:span.glyphicon.glyphicon-pencil {:aria-hidden true}]]]
+    (delete-form "budgets" id)]])
 
 (defn index-budgets
   []
@@ -27,8 +32,8 @@
      [:div.col-md-6
       [:table.table.table-striped.table-hover
        [:tr
-        [:th "Name"]
-        [:th "&nbsp;"]]
+        [:th.col-md-10 "Name"]
+        [:th.col-md-2 "&nbsp;"]]
        (let [conn (d/connect common/uri)
              list (budgets/all-budgets (d/db conn))]
          (map budget-row list))]
@@ -90,3 +95,21 @@
       (log/error e "Unable to create the new budget.")
       (html [:pre (prn-str params)]
             [:pre (prn-str e)]))))
+
+(defn show-budget
+  [id]
+  (html "Show it!"))
+
+(defn edit-budget
+  [id]
+  (html "Edit it!"))
+
+(defn update-budget
+  [params]
+  (html "Update it!"))
+
+(defn delete-budget
+  [id]
+  (let [conn (d/connect common/uri)]
+    (common/delete-entity conn (Long. id)))
+  (redirect "/budgets"))
