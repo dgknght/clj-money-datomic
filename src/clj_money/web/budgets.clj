@@ -48,11 +48,11 @@
     [:div.form-group
      [:label.form-label {:for "start-date"} "Start date"]
      [:input.form-control.date-field {:name "start-date" :id "start-date"}]]
-    [:div.form-group
+    #_[:div.form-group
      [:label.form-label {:for "period"} "Period"]
      [:select.form-control {:id "period" :name "period"}
       (period-options)]]
-    [:div.form-group
+    #_[:div.form-group
      [:label.form-label {:for "period-count"} "Period count"]
      [:input.form-control {:type "number" :name "period-count" :id "period-count" :value 12}]]))
 
