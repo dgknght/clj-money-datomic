@@ -15,16 +15,22 @@
     (add-account conn {:account/name "Checking"  :account/type :account.type/asset})
     conn))
 
+(def budget-attributes {:budget/name "2016"
+                        :budget/start-date #inst "2016-01-01"})
+
 (deftest validate-a-budget
   (testing "a budget without a name is invalid"
-    (is (thrown-with-msg? RuntimeException #"not valid"
-                          (validate-budget {:budget/start-date #inst "2015-02-27"}))))
+    (is (= ["A budget must have a name"] (validate-budget (dissoc budget-attributes :budget/name)))))
   (testing "a budget without a start date is invalid"
-    (is (thrown-with-msg? RuntimeException #"not valid"
-                          (validate-budget {:budget/name "2016"}))))
-  (testing "a budget start date must be a DateTime"
-    (is (thrown-with-msg? RuntimeException #"not valid"
-                          (validate-budget {:budget/name "2016" :budget/start-date "not a date"})))))
+    (is (= ["A budget must have a start date"] (validate-budget (dissoc budget-attributes :budget/start-date)))))
+  (testing "a budget start date can be a parsable string"
+    (is (empty? (validate-budget (assoc budget-attributes :budget/start-date "2016-01-01")))))
+  (testing "a budget start date can be a java.util.Date"
+    (is (empty? (validate-budget budget-attributes))))
+  (testing "a budget start date can be a org.joda.time.DateTime"
+    (is (empty? (validate-budget (assoc budget-attributes :budget/start-date (clj-time.core/date-time 2016 1 1))))))
+  (testing "a budget start date cannot be an unparsable string"
+    (is (= ["A budget must have a valid start date"] (validate-budget (assoc budget-attributes :budget/start-date "notadate"))))))
 
 (deftest add-a-budget
   (testing "When I add a budget, it appears in the list of budgets"

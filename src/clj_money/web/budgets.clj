@@ -73,8 +73,9 @@
 (defn prepare-params
   [html-params]
   (-> html-params
-      (rename-keys html-params {:name :budget/name
-                                :start-date :budget/start-date})
+      (rename-keys {:name :budget/name
+                    :start-date :budget/start-date})
+      (update :budget/start-date common/parse-date)
       (select-keys [:budget/name :budget/start-date])))
 
 (defn create-budget

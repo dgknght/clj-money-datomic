@@ -2,6 +2,7 @@
   (:require [datomic.api :as d :refer [transact q db]]
             [clj-money.common :as m :refer :all]
             [clj-money.accounts :refer :all]
+            [clj-money.util :refer :all]
             [clj-time.core :as t]
             [clj-time.coerce :as c])
   (:gen-class))
@@ -15,18 +16,21 @@
          db)
        (map #(m/hydrate-entity db %))))
 
-(defn ^{:validation-message "'Name' is a required field"} missing-name?
+(defn ^{:validation-message "A budget must have a name"} missing-name?
   [budget]
   (nil? (:budget/name budget)))
 
-(defn ^{:validation-message "'Start date' is a required field"} missing-start-date?
+(defn ^{:validation-message "A budget must have a start date"} missing-start-date?
   [budget]
   (nil? (:budget/start-date budget)))
 
-(defn ^{:validation-message "'Start date' must be a valid date"} invalid-start-date?
+(defn ^{:validation-message "A budget must have a valid start date"} invalid-start-date?
   [{start-date :budget/start-date}]
-  (and start-date
-       (not (= java.util.Date (type start-date)))))
+  (and start-date (cond
+                    (instance? java.lang.String start-date) (not (parse-date start-date))
+                    (instance? java.util.Date start-date) false
+                    (instance? org.joda.time.DateTime start-date) false
+                    :else true)))
 
 (defn validate-budget
   [budget]
