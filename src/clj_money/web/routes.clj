@@ -34,4 +34,12 @@
   (POST "/budgets/:id" [id :as {params :params}] (budgets/update-budget id params))
   (POST "/budgets/:id/delete" [id] (budgets/delete-budget id))
 
+  (GET "/budgets/:budget-id/budget-items" [budget-id] (budgets/index-budget-items budget-id))
+  (GET "/budgets/:budget-id/budget-items/new" [budget-id] (budgets/new-budget-item budget-id))
+  (POST "/budgets/:budget-id/budget-items" [budget-id :as {:keys [params]}] (budgets/create-budget-item params))
+  (GET "/budget-items/:id" [id] (budgets/show-budget-item id))
+  (GET "/budget-items/:id/edit" [id] (budgets/edit-budget-item id))
+  (POST "/budget-items/:id" [id :as {params :params}] (budgets/update-budget-item id params))
+  (POST "/budget-items/:id/delete" [id] (budgets/delete-budget-item id))
+
   (route/not-found (html [:h1 "Resource not found"])))

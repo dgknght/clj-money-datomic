@@ -9,6 +9,7 @@
             [clj-money.common :as common]
             [clj-money.util :as util]
             [clj-money.budgets :as budgets]
+            [clj-money.web.accounts :refer [account-options-for-select]]
             [clj-money.web.layouts :refer :all])
   (:import java.lang.Long))
 
@@ -116,7 +117,7 @@
       [:div.row
        [:div.col-md-3
         [:div.btn-group
-         [:a.btn.btn-primary {:href "/budget-items/new"} "Add item"]
+         [:a.btn.btn-primary {:href (str "/budgets/" id "/budget-items/new")} "Add item"]
          [:a.btn.btn-default {:href "/budgets"} "Back"]]]])))
 
 (defn edit-budget
@@ -148,3 +149,55 @@
   (let [conn (d/connect common/uri)]
     (common/delete-entity conn (Long. id)))
   (redirect "/budgets"))
+
+(defn index-budget-items
+  [budget-id]
+  (html "index budget items"))
+
+(defn budget-item-form-fields
+  ([] (budget-item-form-fields nil))
+  ([budget-item]
+  (html
+    [:div.form-group
+     [:label.form-label {:for "account"} "Account"]
+     [:select.form-control {:id "account" :name "account"}
+      (account-options-for-select (:budget-item/account budget-item))]]
+    [:div.form-group [:label.form-label {:for "amount"} "Amount"]
+     [:input.form-control {:type "number" :id "amount" :name "amount" :value (:budget-item/amount budget-item)}]])))
+
+(defn new-budget-item
+  [budget-id]
+  (let [db (d/db (d/connect common/uri))
+        budget (budgets/find-budget db (Long. budget-id))
+        header (str "New budget item: " (:budget/name budget))]
+    (main-layout
+      header
+      [:div.page-header
+       [:h1 header]]
+      [:div.row
+       [:div.col-md-3
+        [:form {:role "form" :action (str "/budgets/" budget-id "/budget-items") :method "POST"}
+         (budget-item-form-fields)
+         [:div.btn-group
+          [:button.btn.btn-primary {:type "submit"} "Save"]
+          [:a.btn.btn-default {:href (str "/budgets/" budget-id)} "Cancel"]]]]])))
+
+(defn create-budget-item
+  [budget-id params]
+  (html "new budget item"))
+
+(defn show-budget-item
+  [id]
+  (html "show budget item"))
+
+(defn edit-budget-item
+  [id]
+  (html "edit budget item"))
+
+(defn update-budget-item
+  [id params]
+  (html "update budget item"))
+
+(defn delete-budget-item
+  [id]
+  (html "delete budget item"))
