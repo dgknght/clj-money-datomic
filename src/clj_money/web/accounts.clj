@@ -85,21 +85,22 @@
 
 (defn account-options-for-select
   "Returns the HTML options for the available accounts"
-  [selected-id {:keys [except]}]
-  (let [conn (d/connect common/uri)]
-    (let [result (->> (reports/display-records (d/db conn))
-                      (remove #(except (-> % :account :db/id)))
-                      (group-by :account-type)
-                      (reduce (fn [output [account-type display-records]]
-                                (let [result (-> [:optgroup {:label (account-type reports/account-type-caption-map)}]
-                                                 (concat (mapv (fn [{{id :db/id} :account path :path}]
-                                                                 (select-option path id (= selected-id id)))
-                                                               display-records))
-                                                 vec)]
-                                  (concat output [result])))
-                              []))]
-      (when (seq result)
-        result))))
+  ([selected-id] (account-options-for-select selected-id {:except #{}}))
+  ([selected-id {:keys [except]}]
+   (let [conn (d/connect common/uri)]
+     (let [result (->> (reports/display-records (d/db conn))
+                       (remove #(except (-> % :account :db/id)))
+                       (group-by :account-type)
+                       (reduce (fn [output [account-type display-records]]
+                                 (let [result (-> [:optgroup {:label (account-type reports/account-type-caption-map)}]
+                                                  (concat (mapv (fn [{{id :db/id} :account path :path}]
+                                                                  (select-option path id (= selected-id id)))
+                                                                display-records))
+                                                  vec)]
+                                   (concat output [result])))
+                               []))]
+       (when (seq result)
+         result)))))
 
 (defn account-type-options
   [selected-type]
