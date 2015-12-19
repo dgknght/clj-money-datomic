@@ -154,16 +154,18 @@
   [budget-id]
   (html "index budget items"))
 
-(defn budget-item-form-fields
-  ([] (budget-item-form-fields nil))
+(defn budget-item-form-fields-total
+  ([] (budget-item-form-fields-total nil))
   ([budget-item]
-  (html
-    [:div.form-group
-     [:label.form-label {:for "account"} "Account"]
-     [:select.form-control {:id "account" :name "account"}
-      (account-options-for-select (:budget-item/account budget-item))]]
-    [:div.form-group [:label.form-label {:for "amount"} "Amount"]
-     [:input.form-control {:type "number" :id "amount" :name "amount" :value (:budget-item/amount budget-item)}]])))
+   (html
+     (anti-forgery-field)
+     [:input {:type "hidden" :name "method" :value "total"}]
+     [:div.form-group
+      [:label.form-label {:for "account"} "Account"]
+      [:select.form-control {:id "account" :name "account"}
+       (account-options-for-select (:budget-item/account budget-item))]]
+     [:div.form-group [:label.form-label {:for "total-amount"} "Total amount"]
+      [:input.form-control {:type "number" :id "total-amount" :name "total-amount" :value (:budget-item/amount budget-item)}]])))
 
 (defn new-budget-item
   [budget-id]
@@ -177,14 +179,31 @@
       [:div.row
        [:div.col-md-3
         [:form {:role "form" :action (str "/budgets/" budget-id "/budget-items") :method "POST"}
-         (budget-item-form-fields)
+         (budget-item-form-fields-total)
          [:div.btn-group
           [:button.btn.btn-primary {:type "submit"} "Save"]
           [:a.btn.btn-default {:href (str "/budgets/" budget-id)} "Cancel"]]]]])))
 
+(defmulti params->budget-item
+  "Takes the posted parameters and converts them into
+  a map suitable for transacting in datomic"
+  :method)
+
+(defmethod params->budget-item "total"
+  [params]
+  (let [monthly-amount (/ (bigdec (:total-amount params)) 12)
+        periods (->> (range 1 12)
+                     (mapv #(hash-map :budget-item-period/index %
+                                     :budget-item-period/amount monthly-amount)))]
+    {:budget-item/budget (Long. (:budget-id params))
+     :budget-item/account (Long. (:account params))
+     :budget-item/periods periods}))
+
 (defn create-budget-item
   [budget-id params]
-  (html "new budget item"))
+  (let [budget-item (params->budget-item params)
+        conn (d/connect common/uri)]
+    (budgets/create-budget-item budget-item)))
 
 (defn show-budget-item
   [id]

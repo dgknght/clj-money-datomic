@@ -88,26 +88,53 @@
     (find-budget-by-name db budget-or-name)
     budget-or-name))
 
+(defn resolve-budget
+  [{budget :budget/_items :as budget-item} db]
+  (if (string? budget)
+    (assoc budget-item :budget/_items (resolve-budget db budget))
+    budget-item))
+
+(defn resolve-budget-item-account
+  [{account :budget-item/account :as budget-item} db]
+  (if (string? account)
+    (assoc budget-item :budget-item/account (resolve-account db account))))
+
+(defn ^{:validation-message "A budget item must reference a budget"} missing-budget?
+  [budget-item]
+  (not (:budget/_items budget-item)))
+
+(defn ^{:validation-message "A budget item must reference an account"} missing-account?
+  [budget-item]
+  (not (:budget-item/account budget-item)))
+
+(defn ^{:validation-message "A budget item must have 12 periods"} missing-periods?
+  [budget-item]
+  (not (:budget-item/periods budget-item)))
+
+(defn ^{:validation-message "A budget item must have 12 periods, indexed 0 through 11"} invalid-period-indexes?
+  [budget-item]
+  (when (:budget-item/periods budget-item)
+    (let [indexes (->> budget-item
+                       :budget-item/periods
+                       (map :budget-item-period/index)
+                       (into #{}))]
+      (not= #{0 1 2 3 4 5 6 7 8 9 10 11} indexes))))
+
+(defn validate-budget-item
+  [budget-item]
+  (validate budget-item [#'missing-budget?
+                         #'missing-account?
+                         #'missing-periods?
+                         #'invalid-period-indexes?]))
+
 (defn add-budget-item
   "Adds a line item to a budget"
-  [conn budget-or-name account-or-path amounts]
-  (let [budget (resolve-budget (d/db conn) budget-or-name)
-        account (resolve-account (d/db conn) account-or-path)
-        periods (map-indexed
-                  #(hash-map :budget-item-period/index %1 :budget-item-period/amount %2)
-                  amounts)]
-
-    (if-not budget (throw (IllegalArgumentException. (str "Unable to find a budget named \"" budget-or-name "\""))))
-    (if-not account (throw (IllegalArgumentException. (str "Unable to find an account with the path \"" account-or-path "\""))))
-
-    (let [existing (find-budget-item budget account)
-          insert [{:db/id (:db/id budget)
-                   :budget/items [{:budget-item/account (:db/id account)
-                                   :budget-item/periods periods}]}]
-          tx-data (if existing
-                    (cons [:db.fn/retractEntity (:db/id existing)] insert)
-                    insert)]
-      @(d/transact conn tx-data))))
+  [conn budget-item]
+  (let [tx-data (-> budget-item
+                     (resolve-budget (d/db conn))
+                     (resolve-budget-item-account (d/db conn))
+                     (assoc :db/id (d/tempid :db.part/user)))]
+    @(d/transact conn [tx-data])))
 
 (defn budget-end-date
   "Returns the end date for the specified budget"

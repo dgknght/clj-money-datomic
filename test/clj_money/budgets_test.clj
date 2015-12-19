@@ -48,12 +48,70 @@
           budget (into {} (find-budget-by-name (d/db conn) "2016"))]
       (is (= budget {:budget/name "2016" :budget/start-date #inst "2016-01-01"})))))
 
+(def budget-item-attributes
+  {:budget/_items (:budget/name budget-attributes)
+   :budget-item/account "Groceries"
+   :budget-item/periods (map #(hash-map :budget-item-period/index %
+                                        :budget-item-period/amount 300M)
+                             (range 12))})
+
+(deftest validate-a-budget-item
+  (testing "A valid budget receives no validation errors"
+    (let [conn (prepare-db)
+          _ (add-budget conn budget-attributes)
+          errors (validate-budget-item budget-item-attributes)]
+      (is (empty? errors))))
+  (testing "A budget item must reference a budget"
+    (let [conn (prepare-db)
+          _ (add-budget conn budget-attributes)
+          errors (validate-budget-item (dissoc budget-item-attributes :budget/_items))]
+      (is (= ["A budget item must reference a budget"] errors))))
+  (testing "A budget item must reference an account"
+    (let [conn (prepare-db)
+          _ (add-budget conn budget-attributes)
+          errors (validate-budget-item (dissoc budget-item-attributes :budget-item/account))]
+      (is (= ["A budget item must reference an account"] errors))))
+  (testing "A budget item without any periods is invalid"
+    (let [conn (prepare-db)
+          _ (add-budget conn budget-attributes)
+          errors (validate-budget-item (dissoc budget-item-attributes :budget-item/periods))]
+      (is (= ["A budget item must have 12 periods"] errors))))
+  (testing "A budget item with more than 12 periods is invalid"
+    (let [conn (prepare-db)
+          _ (add-budget conn budget-attributes)
+          errors (validate-budget-item (update budget-item-attributes
+                                               :budget-item/periods
+                                               conj
+                                               {:budget-item-period/index 12
+                                                :budget-item-period/amount 300M}))]
+      (is (= ["A budget item must have 12 periods, indexed 0 through 11"] errors))))
+  (testing "A budget item with less than 12 periods is invalid"
+    (let [conn (prepare-db)
+          _ (add-budget conn budget-attributes)
+          errors (validate-budget-item (update budget-item-attributes
+                                               :budget-item/periods
+                                               rest))]
+      (is (= ["A budget item must have 12 periods, indexed 0 through 11"] errors))))
+  (testing "A budget item must have periods indexed 0 - 11"
+    (let [conn (prepare-db)
+          _ (add-budget conn budget-attributes)
+          errors (validate-budget-item (assoc budget-item-attributes
+                                              :budget-item/periods
+                                              (mapv #(hash-map :budget-item-period/index %
+                                                               :budget-item-period/amount 300M)
+                                                    (range 1 12))))]
+      (is (= ["A budget item must have 12 periods, indexed 0 through 11"] errors)))))
+
 (deftest add-a-budget-item
   (testing "When I add an item to a budget, it should appear in the budget items attribute"
     (let [conn (prepare-db)
           _ (add-budget conn {:budget/name "2015"
                               :budget/start-date #inst "2015-01-01"})
-          _ (add-budget-item conn "2015" "Groceries" (repeat 12 300M))
+          _ (add-budget-item conn {:budget/_items "2015"
+                                   :budget-item/account "Groceries"
+                                   :budget-item/periods (map #(hash-map :budget-item-period/index %
+                                                                        :budget-item-period/amount 300)
+                                                             (range 1 12))})
           first-item (-> conn
                          d/db
                          (find-budget-by-name "2015")
