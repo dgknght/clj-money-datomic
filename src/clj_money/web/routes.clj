@@ -36,7 +36,7 @@
 
   (GET "/budgets/:budget-id/budget-items" [budget-id] (budgets/index-budget-items budget-id))
   (GET "/budgets/:budget-id/budget-items/new" [budget-id] (budgets/new-budget-item budget-id))
-  (POST "/budgets/:budget-id/budget-items" [budget-id :as {:keys [params]}] (budgets/create-budget-item params))
+  (POST "/budgets/:budget-id/budget-items" [budget-id :as {:keys [params]}] (budgets/create-budget-item budget-id params))
   (GET "/budget-items/:id" [id] (budgets/show-budget-item id))
   (GET "/budget-items/:id/edit" [id] (budgets/edit-budget-item id))
   (POST "/budget-items/:id" [id :as {params :params}] (budgets/update-budget-item id params))
