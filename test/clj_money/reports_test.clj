@@ -4,6 +4,7 @@
             [clojure.data :refer [diff]]
             [datomic.api :as d :refer [db]])
   (:use clj-money.test-common
+        clj-money.util
         clj-money.accounts
         clj-money.budgets
         clj-money.transactions
@@ -45,7 +46,7 @@
                            :budget-item/periods (budget-item-periods 245M)})
     (add-budget-item conn {:budget/_items "2015"
                            :budget-item/account "Groceries/Non-food"
-                           :budget-item/periods (budget-item-periods 1800M)})
+                           :budget-item/periods (budget-item-periods 150M)})
 
     (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
                                   :transaction/description "Opening balance"
