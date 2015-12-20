@@ -161,7 +161,7 @@
           _ (add-budget conn budget-attributes)
           _ (add-budget-item conn budget-item-attributes)
           budget-amount (get-budget-amount (d/db conn) (:budget/name budget-attributes) "Groceries" 3)]
-      (is (= 300M budget-amount)))))
+      (is (= 900M budget-amount)))))
 
 (deftest get-a-budget-from-a-date
   (testing "Given a date, I can get the budget that includes that date"
@@ -186,7 +186,7 @@
                                                                      (take 12 (iterate (partial + 100M) 100M))) })
           budget-item-period (-> conn
                                  d/db
-                                 (find-budget-item-period (:budget/name budget-attributes) "Groceries" #inst "2015-03-02"))]
+                                 (find-budget-item-period (:budget/name budget-attributes) "Groceries" #inst "2016-03-02"))]
       (is (= 300M (:budget-item-period/amount budget-item-period))))))
 
 (deftest update-a-budget
