@@ -81,18 +81,27 @@
     (.toString w)))
 
 (defn apply-validation-fn
-  [{:keys [data errors] :as context} validation-fn]
-  (if (validation-fn data)
+  [context validation-fn]
+  (if (validation-fn (:data context) (dissoc context :data))
     (update context :errors conj (:validation-message (meta validation-fn)))
     context))
 
 (defn validate
-  "Applies validation rules to a map. If any of the validation
+  "Applies validation rules. If any of the validation
   rules is triggered, an exception is thrown containing information
-  about the validation failure."
-  [data rule-fns]
-  (let [{errors :errors} (reduce apply-validation-fn {:data data :errors []} rule-fns)]
-    errors))
+  about the validation failure.
+
+  Parameters:
+  data: the map to be validated
+  rule-fns: A list of functions that return truthy to incidate a rule has bee violated
+    and containing a :validate-message meta attribute to be used as the error message
+  context (optional): Additional information that may be used by the validation functions
+  "
+  ([data rule-fns] (validate data rule-fns {}))
+  ([data rule-fns context]
+   (let [full-ctx (assoc context :data data :errors [])
+         {errors :errors} (reduce apply-validation-fn full-ctx rule-fns)]
+     errors)))
 
 (defn to-date
   "Takes the given object and ensures converts it to a java.util.Date if possible"

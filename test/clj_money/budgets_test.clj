@@ -22,17 +22,34 @@
 
 (deftest validate-a-budget
   (testing "a budget without a name is invalid"
-    (is (= ["A budget must have a name"] (validate-budget (dissoc budget-attributes :budget/name)))))
+    (let [db (d/db (create-empty-db))
+          to-validate (dissoc budget-attributes :budget/name)
+          errors (validate-budget db to-validate)]
+      (is (= ["A budget must have a name"] errors))))
   (testing "a budget without a start date is invalid"
-    (is (= ["A budget must have a start date"] (validate-budget (dissoc budget-attributes :budget/start-date)))))
+    (let [db (d/db (create-empty-db))
+          to-validate (dissoc budget-attributes :budget/start-date)
+          errors (validate-budget db to-validate)]
+      (is (= ["A budget must have a start date"] errors))))
   (testing "a budget start date can be a parsable string"
-    (is (empty? (validate-budget (assoc budget-attributes :budget/start-date "2016-01-01")))))
+    (let [db (d/db (create-empty-db))
+          to-validate (assoc budget-attributes :budget/start-date "2016-01-01")
+          errors (validate-budget db to-validate)]
+      (is (empty? errors))))
   (testing "a budget start date can be a java.util.Date"
-    (is (empty? (validate-budget budget-attributes))))
+    (let [db (d/db (create-empty-db))
+          errors (validate-budget db budget-attributes)]
+      (is (empty? errors))))
   (testing "a budget start date can be a org.joda.time.DateTime"
-    (is (empty? (validate-budget (assoc budget-attributes :budget/start-date (time/date-time 2016 1 1))))))
+    (let [db (d/db (create-empty-db))
+          to-validate (assoc budget-attributes :budget/start-date (time/date-time 2016 1 1))
+          errors (validate-budget db to-validate)]
+      (is (empty? errors))))
   (testing "a budget start date cannot be an unparsable string"
-    (is (= ["A budget must have a valid start date"] (validate-budget (assoc budget-attributes :budget/start-date "notadate"))))))
+    (let [db (d/db (create-empty-db))
+          to-validate (assoc budget-attributes :budget/start-date "notadate")
+          errors (validate-budget db to-validate)]
+      (is (= ["A budget must have a valid start date"] errors)))))
 
 (deftest add-a-budget
   (testing "When I add a budget, it appears in the list of budgets"
@@ -59,47 +76,47 @@
   (testing "A valid budget receives no validation errors"
     (let [conn (prepare-db)
           _ (add-budget conn budget-attributes)
-          errors (validate-budget-item budget-item-attributes)]
+          errors (validate-budget-item (d/db conn) budget-item-attributes)]
       (is (empty? errors))))
   (testing "A budget item must reference a budget"
     (let [conn (prepare-db)
           _ (add-budget conn budget-attributes)
-          errors (validate-budget-item (dissoc budget-item-attributes :budget/_items))]
+          errors (validate-budget-item (d/db conn) (dissoc budget-item-attributes :budget/_items))]
       (is (= ["A budget item must reference a budget"] errors))))
   (testing "A budget item must reference an account"
     (let [conn (prepare-db)
           _ (add-budget conn budget-attributes)
-          errors (validate-budget-item (dissoc budget-item-attributes :budget-item/account))]
+          errors (validate-budget-item (d/db conn) (dissoc budget-item-attributes :budget-item/account))]
       (is (= ["A budget item must reference an account"] errors))))
   (testing "A budget item without any periods is invalid"
     (let [conn (prepare-db)
           _ (add-budget conn budget-attributes)
-          errors (validate-budget-item (dissoc budget-item-attributes :budget-item/periods))]
+          errors (validate-budget-item (d/db conn) (dissoc budget-item-attributes :budget-item/periods))]
       (is (= ["A budget item must have 12 periods"] errors))))
   (testing "A budget item with more than 12 periods is invalid"
     (let [conn (prepare-db)
           _ (add-budget conn budget-attributes)
-          errors (validate-budget-item (update budget-item-attributes
-                                               :budget-item/periods
-                                               conj
-                                               {:budget-item-period/index 12
-                                                :budget-item-period/amount 300M}))]
+          errors (validate-budget-item (d/db conn) (update budget-item-attributes
+                                                           :budget-item/periods
+                                                           conj
+                                                           {:budget-item-period/index 12
+                                                            :budget-item-period/amount 300M}))]
       (is (= ["A budget item must have 12 periods, indexed 0 through 11"] errors))))
   (testing "A budget item with less than 12 periods is invalid"
     (let [conn (prepare-db)
           _ (add-budget conn budget-attributes)
-          errors (validate-budget-item (update budget-item-attributes
-                                               :budget-item/periods
-                                               rest))]
+          errors (validate-budget-item (d/db conn) (update budget-item-attributes
+                                                           :budget-item/periods
+                                                           rest))]
       (is (= ["A budget item must have 12 periods, indexed 0 through 11"] errors))))
   (testing "A budget item must have periods indexed 0 - 11"
     (let [conn (prepare-db)
           _ (add-budget conn budget-attributes)
-          errors (validate-budget-item (assoc budget-item-attributes
-                                              :budget-item/periods
-                                              (mapv #(hash-map :budget-item-period/index %
-                                                               :budget-item-period/amount 300M)
-                                                    (range 1 12))))]
+          errors (validate-budget-item (d/db conn) (assoc budget-item-attributes
+                                                          :budget-item/periods
+                                                          (mapv #(hash-map :budget-item-period/index %
+                                                                           :budget-item-period/amount 300M)
+                                                                (range 1 12))))]
       (is (= ["A budget item must have 12 periods, indexed 0 through 11"] errors)))))
 
 (deftest add-a-budget-item

@@ -17,15 +17,15 @@
        (map #(m/hydrate-entity db %))))
 
 (defn ^{:validation-message "A budget must have a name"} missing-name?
-  [budget]
+  [budget ctx]
   (nil? (:budget/name budget)))
 
 (defn ^{:validation-message "A budget must have a start date"} missing-start-date?
-  [budget]
+  [budget ctx]
   (nil? (:budget/start-date budget)))
 
 (defn ^{:validation-message "A budget must have a valid start date"} invalid-start-date?
-  [{start-date :budget/start-date}]
+  [{start-date :budget/start-date} ctx]
   (and start-date (cond
                     (instance? java.lang.String start-date) (not (parse-date start-date))
                     (instance? java.util.Date start-date) false
@@ -37,19 +37,19 @@
                      #'invalid-start-date?])
 
 (defn validate-budget
-  [budget]
-  (validate budget validation-fns))
+  [db budget]
+  (validate budget validation-fns {:db db}))
 
 (defn validate-budget!
-  [budget]
-  (let [errors (validate-budget budget)]
+  [db budget]
+  (let [errors (validate-budget db budget)]
     (when (seq errors)
       (throw (ex-info "The budget is not valid" {:budget budget :errors errors})))))
 
 (defn add-budget
   "Adds a new budget to the system"
   [conn budget]
-  (validate-budget! budget)
+  (validate-budget! (d/db conn) budget)
   (let [new-id (d/tempid :db.part/user)
         tx-data (-> budget
                     (assoc :db/id new-id)
@@ -100,19 +100,19 @@
     (assoc budget-item :budget-item/account (:db/id (resolve-account db account)))))
 
 (defn ^{:validation-message "A budget item must reference a budget"} missing-budget?
-  [budget-item]
+  [budget-item ctx]
   (not (:budget/_items budget-item)))
 
 (defn ^{:validation-message "A budget item must reference an account"} missing-account?
-  [budget-item]
+  [budget-item ctx]
   (not (:budget-item/account budget-item)))
 
 (defn ^{:validation-message "A budget item must have 12 periods"} missing-periods?
-  [budget-item]
+  [budget-item ctx]
   (not (:budget-item/periods budget-item)))
 
 (defn ^{:validation-message "A budget item must have 12 periods, indexed 0 through 11"} invalid-period-indexes?
-  [budget-item]
+  [budget-item ctx]
   (when (:budget-item/periods budget-item)
     (let [indexes (->> budget-item
                        :budget-item/periods
@@ -120,16 +120,19 @@
                        (into #{}))]
       (not= #{0 1 2 3 4 5 6 7 8 9 10 11} indexes))))
 
+(def budget-item-validation-fns
+  [#'missing-budget?
+   #'missing-account?
+   #'missing-periods?
+   #'invalid-period-indexes?])
+
 (defn validate-budget-item
-  [budget-item]
-  (validate budget-item [#'missing-budget?
-                         #'missing-account?
-                         #'missing-periods?
-                         #'invalid-period-indexes?]))
+  [db budget-item]
+  (validate budget-item budget-item-validation-fns {:db db}))
 
 (defn validate-budget-item!
-  [budget-item]
-  (let [errors (validate-budget-item budget-item)]
+  [db budget-item]
+  (let [errors (validate-budget-item db budget-item)]
     (when (seq errors)
       (throw (ex-info "Unable to save the budget item"
                       {:budget-item budget-item
@@ -142,7 +145,7 @@
         resolved (->> budget-item
                       (resolve-budget-item-budget db)
                       (resolve-budget-item-account db))
-        _ (validate-budget-item! resolved)
+        _ (validate-budget-item! db resolved)
         tx-data (assoc resolved
                        :db/id
                        (d/tempid :db.part/user))]
