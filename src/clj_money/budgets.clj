@@ -88,16 +88,16 @@
     (find-budget-by-name db budget-or-name)
     budget-or-name))
 
-(defn resolve-budget
-  [{budget :budget/_items :as budget-item} db]
+(defn resolve-budget-item-budget
+  [db {budget :budget/_items :as budget-item}]
   (if (string? budget)
-    (assoc budget-item :budget/_items (resolve-budget db budget))
+    (assoc budget-item :budget/_items (:db/id (resolve-budget db budget)))
     budget-item))
 
 (defn resolve-budget-item-account
-  [{account :budget-item/account :as budget-item} db]
+  [db {account :budget-item/account :as budget-item}]
   (if (string? account)
-    (assoc budget-item :budget-item/account (resolve-account db account))))
+    (assoc budget-item :budget-item/account (:db/id (resolve-account db account)))))
 
 (defn ^{:validation-message "A budget item must reference a budget"} missing-budget?
   [budget-item]
@@ -127,13 +127,25 @@
                          #'missing-periods?
                          #'invalid-period-indexes?]))
 
+(defn validate-budget-item!
+  [budget-item]
+  (let [errors (validate-budget-item budget-item)]
+    (when (seq errors)
+      (throw (ex-info "Unable to save the budget item"
+                      {:budget-item budget-item
+                       :errors errors})))))
+
 (defn add-budget-item
   "Adds a line item to a budget"
   [conn budget-item]
-  (let [tx-data (-> budget-item
-                     (resolve-budget (d/db conn))
-                     (resolve-budget-item-account (d/db conn))
-                     (assoc :db/id (d/tempid :db.part/user)))]
+  (let [db (d/db conn)
+        resolved (->> budget-item
+                      (resolve-budget-item-budget db)
+                      (resolve-budget-item-account db))
+        _ (validate-budget-item! resolved)
+        tx-data (assoc resolved
+                       :db/id
+                       (d/tempid :db.part/user))]
     @(d/transact conn [tx-data])))
 
 (defn budget-end-date

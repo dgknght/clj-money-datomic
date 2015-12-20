@@ -9,6 +9,12 @@
         clj-money.transactions
         clj-money.reports))
 
+(defn budget-item-periods
+  [amount]
+  (map #(hash-map :budget-item-period/index %
+                  :budget-item-period/amount amount)
+       (range 0 12)))
+
 (defn populate-db
   "Creates and populates a database"
   []
@@ -31,9 +37,15 @@
       (clojure.pprint/pprint (ex-data e))
       (throw e)))
 
-    (add-budget-item conn "2015" "Salary"             (repeat 12 1800M))
-    (add-budget-item conn "2015" "Groceries/Food"     (repeat 12 245M))
-    (add-budget-item conn "2015" "Groceries/Non-food" (repeat 12 150M))
+    (add-budget-item conn {:budget/_items "2015"
+                           :budget-item/account "Salary"
+                           :budget-item/periods (budget-item-periods 1800M)})
+    (add-budget-item conn {:budget/_items "2015"
+                           :budget-item/account "Groceries/Food"
+                           :budget-item/periods (budget-item-periods 245M)})
+    (add-budget-item conn {:budget/_items "2015"
+                           :budget-item/account "Groceries/Non-food"
+                           :budget-item/periods (budget-item-periods 1800M)})
 
     (add-simple-transaction conn {:transaction/date #inst "2015-01-01"
                                   :transaction/description "Opening balance"

@@ -53,7 +53,7 @@
    :budget-item/account "Groceries"
    :budget-item/periods (map #(hash-map :budget-item-period/index %
                                         :budget-item-period/amount 300M)
-                             (range 12))})
+                             (range 0 12))})
 
 (deftest validate-a-budget-item
   (testing "A valid budget receives no validation errors"
@@ -105,16 +105,11 @@
 (deftest add-a-budget-item
   (testing "When I add an item to a budget, it should appear in the budget items attribute"
     (let [conn (prepare-db)
-          _ (add-budget conn {:budget/name "2015"
-                              :budget/start-date #inst "2015-01-01"})
-          _ (add-budget-item conn {:budget/_items "2015"
-                                   :budget-item/account "Groceries"
-                                   :budget-item/periods (map #(hash-map :budget-item-period/index %
-                                                                        :budget-item-period/amount 300)
-                                                             (range 1 12))})
+          _ (add-budget conn budget-attributes)
+          _ (add-budget-item conn budget-item-attributes)
           first-item (-> conn
                          d/db
-                         (find-budget-by-name "2015")
+                         (find-budget-by-name (:budget/name budget-attributes))
                          :budget/items
                          first)
           account-name (->> first-item
@@ -127,34 +122,13 @@
                               (map :budget-item-period/amount))]
       (is (= period-amounts [300M 300M 300M 300M 300M 300M 300M 300M 300M 300M 300M 300M]))
       (is (= account-name "Groceries"))))
-  (testing "If I add a budget item for an account that already has a budget item, a new item is not created"
+  (testing "A budget cannot have two items with the same account"
     (let [conn (prepare-db)
-          _ (add-budget conn {:budget/name "2015"
-                              :budget/start-date #inst "2015-01-01"})
-          _ (add-budget-item conn "2015" "Groceries" (repeat 12 100M))
-          _ (add-budget-item conn "2015" "Groceries" (repeat 12 300M))
-          item-count (-> conn
-                         d/db
-                         (find-budget-by-name "2015")
-                         :budget/items
-                         count)]
-      (is (= 1 item-count))))
-  (testing "If I add a budget item for an account that already has a budget item, the budget values are overwritten"
-    (let [conn (prepare-db)
-          _ (add-budget conn {:budget/name "2015"
-                              :budget/start-date #inst "2015-01-01"})
-          _ (add-budget-item conn "2015" "Groceries" (repeat 12 100M))
-          _ (add-budget-item conn "2015" "Groceries" (repeat 12 300M))
-          first-item (-> conn
-                         d/db
-                         (find-budget-by-name "2015")
-                         :budget/items
-                         first)
-          amounts (->> first-item
-                       :budget-item/periods
-                       (sort-by :budget-item-period/index)
-                       (map :budget-item-period/amount))]
-      (is (= amounts [300M 300M 300M 300M 300M 300M 300M 300M 300M 300M 300M 300M])))))
+          _ (add-budget conn budget-attributes)
+          _ (add-budget-item conn budget-item-attributes)]
+      (is (thrown-with-msg? RuntimeException
+                            "A budget item already exists for account 'Groceries'"
+                            (add-budget-item conn budget-item-attributes))))))
 
 (deftest get-budget-end-date
   (testing "Given a budget, I can get the end date"
@@ -167,10 +141,9 @@
 (deftest get-a-budget-amount
   (testing "Given a budget, and account, and a number of periods, I can get a budget amount"
     (let [conn (prepare-db)
-          _ (add-budget conn {:budget/name "2015"
-                              :budget/start-date #inst "2015-01-01"})
-          _ (add-budget-item conn "2015" "Groceries" (repeat 12 100M))
-          budget-amount (get-budget-amount (d/db conn) "2015" "Groceries" 3)]
+          _ (add-budget conn budget-attributes)
+          _ (add-budget-item conn budget-item-attributes)
+          budget-amount (get-budget-amount (d/db conn) (:budget/name budget-attributes) "Groceries" 3)]
       (is (= 300M budget-amount)))))
 
 (deftest get-a-budget-from-a-date
@@ -188,12 +161,15 @@
 (deftest get-a-budget-item-period
   (testing "Given a budget item, I can get the budget period"
     (let [conn (prepare-db)
-          _ (add-budget conn {:budget/name "2015"
-                              :budget/start-date #inst "2015-01-01"})
-          _ (add-budget-item conn "2015" "Groceries" (take 12 (iterate (partial + 100M) 100M)))
+          _ (add-budget conn budget-attributes)
+          _ (add-budget-item conn {:budget/_items (:budget/name budget-attributes)
+                                   :budget-item/account "Groceries"
+                                   :budget-item/periods (map-indexed #(hash-map :budget-item-period/index %1
+                                                                                :budget-item-period/amount %2)
+                                                                     (take 12 (iterate (partial + 100M) 100M))) })
           budget-item-period (-> conn
                                  d/db
-                                 (find-budget-item-period "2015" "Groceries" #inst "2015-03-02"))]
+                                 (find-budget-item-period (:budget/name budget-attributes) "Groceries" #inst "2015-03-02"))]
       (is (= 300M (:budget-item-period/amount budget-item-period))))))
 
 (deftest update-a-budget
