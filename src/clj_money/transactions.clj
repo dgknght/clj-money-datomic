@@ -436,25 +436,25 @@
   "Given an account ID, totals the transaction item values for the specified account through the specified date"
   ([db account as-of-date] (calculate-account-balance db account earliest-date as-of-date))
   ([db account from to]
-  (let [account (d/touch (d/entity db account))
-        amounts (d/q '[:find ?amount ?action-name ?i ; The ?i value isn't used, but without it, duplicate rows were not returned
-                       :in $ ?from ?to ?account-id
-                       :where [?t :transaction/date ?transaction-date]
-                       [?t :transaction/items ?i]
-                       [?i :transaction-item/account ?account-id]
-                       [?i :transaction-item/amount ?amount]
-                       [?i :transaction-item/action ?action]
-                       [?action :db/ident ?action-name]
-                       [(<= ?transaction-date ?to)]
-                       [(>= ?transaction-date ?from)]]
-                     db
-                     from
-                     to
-                     (:db/id account))]
-    (reduce (fn [result [amount action]]
-              (+ result (* amount (polarizer account action))))
-            (bigdec 0)
-            amounts))))
+   (let [account (d/touch (d/entity db account))
+         amounts (d/q '[:find ?amount ?action-name ?i ; The ?i value isn't used, but without it, duplicate rows were not returned
+                        :in $ ?from ?to ?account-id
+                        :where [?t :transaction/date ?transaction-date]
+                        [?t :transaction/items ?i]
+                        [?i :transaction-item/account ?account-id]
+                        [?i :transaction-item/amount ?amount]
+                        [?i :transaction-item/action ?action]
+                        [?action :db/ident ?action-name]
+                        [(<= ?transaction-date ?to)]
+                        [(>= ?transaction-date ?from)]]
+                      db
+                      from
+                      to
+                      (:db/id account))]
+     (reduce (fn [result [amount action]]
+               (+ result (* amount (polarizer account action))))
+             (bigdec 0)
+             amounts))))
 
 (defn recalculate-account-balance
   "Recalculates the balances for the specified account, also recalculating
