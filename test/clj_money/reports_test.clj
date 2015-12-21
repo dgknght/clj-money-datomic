@@ -33,10 +33,11 @@
 
 
     (try
-    (add-budget conn {:budget/name "2015" :budget/start-date #inst "2015-01-01"})
-    (catch Exception e
-      (clojure.pprint/pprint (ex-data e))
-      (throw e)))
+      (add-budget conn {:budget/name "2015" :budget/start-date #inst "2015-01-01"})
+      (catch Exception e
+        (println "Unable to create the budget:" (.getMessage e))
+        (clojure.pprint/pprint (ex-data e))
+        (throw e)))
 
     (add-budget-item conn {:budget/_items "2015"
                            :budget-item/account "Salary"
