@@ -72,6 +72,12 @@
        first
        (m/hydrate-entity db)))
 
+(defn resolve-budget
+  [db budget-or-name]
+  (if (string? budget-or-name)
+    (find-budget-by-name db budget-or-name)
+    budget-or-name))
+
 (defn find-budget-item
   "Find the item in a budget for the specified account"
   [db budget-token account-token]
@@ -82,12 +88,6 @@
          (map d/touch)
          (filter #(= (:db/id account) (-> % :budget-item/account :db/id)))
          first)))
-
-(defn resolve-budget
-  [db budget-or-name]
-  (if (string? budget-or-name)
-    (find-budget-by-name db budget-or-name)
-    budget-or-name))
 
 (defn resolve-budget-item-budget
   [db {budget :budget/_items :as budget-item}]
