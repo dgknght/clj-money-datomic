@@ -73,10 +73,11 @@
        (m/hydrate-entity db)))
 
 (defn resolve-budget
-  [db budget-or-name]
-  (if (string? budget-or-name)
-    (find-budget-by-name db budget-or-name)
-    budget-or-name))
+  [db budget-token]
+  (cond
+    (string? budget-token) (find-budget-by-name db budget-token)
+    (integer? budget-token) (find-budget db budget-token)
+    :else budget-token))
 
 (defn find-budget-item
   "Find the item in a budget for the specified account"
@@ -172,10 +173,8 @@
 
 (defn get-budget-amount
   "Returns the amount specified in the given budget for the given account over the given number of periods"
-  [db budget-or-name account-or-name periods]
-  (let [budget (resolve-budget db budget-or-name)
-        account (resolve-account db account-or-name)
-        item (find-budget-item db (:db/id budget) (:db/id account))]
+  [db budget-token account-token periods]
+  (let [item (find-budget-item db budget-token account-token)]
     (reduce #(+ %1 (:budget-item-period/amount %2))
             0M
             (take periods (:budget-item/periods item)))))
