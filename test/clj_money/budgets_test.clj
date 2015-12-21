@@ -76,48 +76,65 @@
   (testing "A valid budget receives no validation errors"
     (let [conn (prepare-db)
           _ (add-budget conn budget-attributes)
-          errors (validate-budget-item (d/db conn) budget-item-attributes)]
+          to-validate (resolve-budget-item-refs (d/db conn) budget-item-attributes)
+          errors (validate-budget-item (d/db conn) to-validate)]
       (is (empty? errors))))
   (testing "A budget item must reference a budget"
     (let [conn (prepare-db)
           _ (add-budget conn budget-attributes)
-          errors (validate-budget-item (d/db conn) (dissoc budget-item-attributes :budget/_items))]
+          to-validate (dissoc (resolve-budget-item-refs (d/db conn) budget-item-attributes)
+                              :budget/_items)
+          errors (validate-budget-item (d/db conn) to-validate)]
       (is (= ["A budget item must reference a budget"] errors))))
   (testing "A budget item must reference an account"
     (let [conn (prepare-db)
           _ (add-budget conn budget-attributes)
-          errors (validate-budget-item (d/db conn) (dissoc budget-item-attributes :budget-item/account))]
+          to-validate (dissoc (resolve-budget-item-refs (d/db conn) budget-item-attributes)
+                              :budget-item/account)
+          errors (validate-budget-item (d/db conn) to-validate)]
       (is (= ["A budget item must reference an account"] errors))))
   (testing "A budget item without any periods is invalid"
     (let [conn (prepare-db)
           _ (add-budget conn budget-attributes)
-          errors (validate-budget-item (d/db conn) (dissoc budget-item-attributes :budget-item/periods))]
+          to-validate (dissoc (resolve-budget-item-refs (d/db conn) budget-item-attributes)
+                              :budget-item/periods)
+          errors (validate-budget-item (d/db conn) to-validate)]
       (is (= ["A budget item must have 12 periods"] errors))))
   (testing "A budget item with more than 12 periods is invalid"
     (let [conn (prepare-db)
           _ (add-budget conn budget-attributes)
-          errors (validate-budget-item (d/db conn) (update budget-item-attributes
-                                                           :budget-item/periods
-                                                           conj
-                                                           {:budget-item-period/index 12
-                                                            :budget-item-period/amount 300M}))]
+          to-validate (update (resolve-budget-item-refs (d/db conn) budget-item-attributes)
+                              :budget-item/periods
+                              conj
+                              {:budget-item-period/index 12
+                               :budget-item-period/amount 300M})
+          errors (validate-budget-item (d/db conn) to-validate)]
       (is (= ["A budget item must have 12 periods, indexed 0 through 11"] errors))))
   (testing "A budget item with less than 12 periods is invalid"
     (let [conn (prepare-db)
           _ (add-budget conn budget-attributes)
-          errors (validate-budget-item (d/db conn) (update budget-item-attributes
-                                                           :budget-item/periods
-                                                           rest))]
+          to-validate (update (resolve-budget-item-refs (d/db conn) budget-item-attributes)
+                              :budget-item/periods
+                              rest)
+          errors (validate-budget-item (d/db conn) to-validate)]
       (is (= ["A budget item must have 12 periods, indexed 0 through 11"] errors))))
   (testing "A budget item must have periods indexed 0 - 11"
     (let [conn (prepare-db)
           _ (add-budget conn budget-attributes)
-          errors (validate-budget-item (d/db conn) (assoc budget-item-attributes
-                                                          :budget-item/periods
-                                                          (mapv #(hash-map :budget-item-period/index %
-                                                                           :budget-item-period/amount 300M)
-                                                                (range 1 12))))]
-      (is (= ["A budget item must have 12 periods, indexed 0 through 11"] errors)))))
+          to-validate (assoc (resolve-budget-item-refs (d/db conn) budget-item-attributes)
+                             :budget-item/periods
+                             (mapv #(hash-map :budget-item-period/index %
+                                              :budget-item-period/amount 300M)
+                                   (range 1 12)))
+          errors (validate-budget-item (d/db conn) to-validate)]
+      (is (= ["A budget item must have 12 periods, indexed 0 through 11"] errors))))
+  (testing "A budget cannot have two items with the same account"
+    (let [conn (prepare-db)
+          _ (add-budget conn budget-attributes)
+          _ (add-budget-item conn budget-item-attributes)
+          to-validate (resolve-budget-item-refs (d/db conn) budget-item-attributes)
+          errors (validate-budget-item (d/db conn) to-validate)]
+      (is (= ["A budget can only have one item for any account"] errors)))))
 
 (deftest add-a-budget-item
   (testing "When I add an item to a budget, it should appear in the budget items attribute"
@@ -139,13 +156,7 @@
                               (map :budget-item-period/amount))]
       (is (= period-amounts [300M 300M 300M 300M 300M 300M 300M 300M 300M 300M 300M 300M]))
       (is (= account-name "Groceries"))))
-  (testing "A budget cannot have two items with the same account"
-    (let [conn (prepare-db)
-          _ (add-budget conn budget-attributes)
-          _ (add-budget-item conn budget-item-attributes)]
-      (is (thrown-with-msg? RuntimeException
-                            "A budget item already exists for account 'Groceries'"
-                            (add-budget-item conn budget-item-attributes))))))
+  )
 
 (deftest get-budget-end-date
   (testing "Given a budget, I can get the end date"

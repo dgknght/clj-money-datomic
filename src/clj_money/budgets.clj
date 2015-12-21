@@ -31,7 +31,6 @@
                     (instance? java.util.Date start-date) false
                     (instance? org.joda.time.DateTime start-date) false
                     :else true)))
-
 (def validation-fns [#'missing-name?
                      #'missing-start-date?
                      #'invalid-start-date?])
@@ -75,11 +74,16 @@
 
 (defn find-budget-item
   "Find the item in a budget for the specified account"
-  [budget account]
+  [db budget-id account-id]
   (->>
-    budget
-    :budget/items
-    (filter #(= (:db/id account) (:db/id (:budget-item/account %))))
+    (d/q
+      '[:find ?bi
+        :in $ ?budget-id ?account-id
+        :where [?budget-id :budget/items ?bi]
+               [?bi :budget-item/account ?account-id]]
+      db
+      budget-id
+      account-id)
     first))
 
 (defn resolve-budget
@@ -120,11 +124,16 @@
                        (into #{}))]
       (not= #{0 1 2 3 4 5 6 7 8 9 10 11} indexes))))
 
+(defn ^{:validation-message "A budget can only have one item for any account"} duplicate-account?
+  [{budget-id :budget/_items account-id :budget-item/account} {db :db}]
+  (and budget-id account-id (find-budget-item db budget-id account-id)))
+
 (def budget-item-validation-fns
   [#'missing-budget?
    #'missing-account?
    #'missing-periods?
-   #'invalid-period-indexes?])
+   #'invalid-period-indexes?
+   #'duplicate-account?])
 
 (defn validate-budget-item
   [db budget-item]
@@ -138,13 +147,17 @@
                       {:budget-item budget-item
                        :errors errors})))))
 
+(defn resolve-budget-item-refs
+  [db budget-item]
+  (->> budget-item
+       (resolve-budget-item-budget db)
+       (resolve-budget-item-account db)))
+
 (defn add-budget-item
   "Adds a line item to a budget"
   [conn budget-item]
   (let [db (d/db conn)
-        resolved (->> budget-item
-                      (resolve-budget-item-budget db)
-                      (resolve-budget-item-account db))
+        resolved (resolve-budget-item-refs db budget-item)
         _ (validate-budget-item! db resolved)
         tx-data (assoc resolved
                        :db/id
@@ -165,7 +178,7 @@
   [db budget-or-name account-or-name periods]
   (let [budget (resolve-budget db budget-or-name)
         account (resolve-account db account-or-name)
-        item (find-budget-item budget account)]
+        item (find-budget-item db (:db/id budget) (:db/id account))]
     (reduce #(+ %1 (:budget-item-period/amount %2))
             0M
             (take periods (:budget-item/periods item)))))
@@ -202,7 +215,7 @@
   (let [budget (resolve-budget db budget-or-name)
         budget-start-date (c/from-date (:budget/start-date budget))
         account (resolve-account db account-or-name)
-        budget-item (find-budget-item budget account)]
+        budget-item (find-budget-item db (:db/id budget) (:db/id account))]
     (->> budget-item
          :budget-item/periods
          (map #(append-budget-item-period-dates % budget-start-date))
