@@ -74,17 +74,14 @@
 
 (defn find-budget-item
   "Find the item in a budget for the specified account"
-  [db budget-id account-id]
-  (->>
-    (d/q
-      '[:find ?bi
-        :in $ ?budget-id ?account-id
-        :where [?budget-id :budget/items ?bi]
-               [?bi :budget-item/account ?account-id]]
-      db
-      budget-id
-      account-id)
-    first))
+  [db budget-token account-token]
+  (let [budget (resolve-budget db budget-token)
+        account (resolve-account db account-token)]
+    (->> budget
+         :budget/items
+         (map d/touch)
+         (filter #(= (:db/id account) (-> % :budget-item/account :db/id)))
+         first)))
 
 (defn resolve-budget
   [db budget-or-name]
@@ -215,7 +212,7 @@
   (let [budget (resolve-budget db budget-or-name)
         budget-start-date (c/from-date (:budget/start-date budget))
         account (resolve-account db account-or-name)
-        budget-item (find-budget-item db (:db/id budget) (:db/id account))]
+        budget-item (find-budget-item db budget account)]
     (->> budget-item
          :budget-item/periods
          (map #(append-budget-item-period-dates % budget-start-date))
