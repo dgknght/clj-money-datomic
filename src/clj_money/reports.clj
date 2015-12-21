@@ -239,10 +239,13 @@
 (defn budget-monitor
   "Returns information about the spending level in an account compared to
   the expected spending level based on the number of days elapsed on the month"
-  [db account-or-name date]
-  (let [account (resolve-account db account-or-name)
+  [db account-token date]
+  (let [account (resolve-account db account-token)
+        _ (if-not account (throw (ex-info "Unable to find the account" {:account-token account-token})))
         budget (find-budget-containing-date db date)
+        _ (if-not budget (throw (ex-info "Unable to find the budget" {:date date})))
         period (find-budget-item-period db budget account date)
+        _ (if-not period (throw (ex-info "Unable to find the budget period" {:budget budget :date date})))
         budget-amount (:budget-item-period/amount period)
         dt (c/from-date date)
         expected-percent (/ (t/day dt) (t/number-of-days-in-the-month dt))
