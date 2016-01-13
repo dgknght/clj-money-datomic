@@ -1,32 +1,45 @@
 # clj-money
 
-FIXME: description
+This is a web-based implementation of a basic [double-entry accounting system](https://en.wikipedia.org/wiki/Double-entry_bookkeeping_system).
+A basic working knowledge of these accounting principles will be necessary to make sense of the site.
 
-## Installation
+There is also a Ruby on Rails version of exactly the same application [here](https://github.com/dgknght/money), for those of you that like to compare and contrast.
 
-Download from http://example.com/FIXME.
+## Running locally
 
-## Usage
+### Source Code
+Clone the repo
 
-FIXME: explanation
+```
+git clone git@github.com:dgknght/clj-money.git
+```
 
-    $ java -jar clj-money-0.1.0-standalone.jar [args]
+### Data Storage
+You'll need [Datomic](http://www.datomic.com/). You can download a free version [here](https://my.datomic.com/downloads/free). Follow their instructions for setting it up.
 
-## Options
+Start an instance of the transactor by executing the following command in a terminal window.
+```
+<path-to-datomic>\transactor <path-to-this-project>\config\transactor.properties
+```
 
-FIXME: listing of options this app accepts.
+### Start the service
+To start the service, simple start a repl from within the project.
+```
+lein repl
+```
 
-## Examples
+**NOTE** *I need to rework the service so that you can start it up  and close it down from the repl. One thing at a time, though.*
 
-...
+### Initialize the Data Store
+Within the repl, execute the following:
+```
+(clj-money.admin/init-database)
+```
+This will create the database and apply the schema.
 
-### Bugs
+### Open a browser
+Simply navigate to (http://localhost:3204/) and start accounting.
 
-...
-
-### Any Other Sections
-### That You Think
-### Might be Useful
 
 ## License
 
