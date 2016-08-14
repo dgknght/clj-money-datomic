@@ -5,22 +5,23 @@
             [clj-money.models.accounts :refer :all]
             [clj-money.common :refer :all]
             [clj-money.test-common :refer [create-empty-db]])
-  (:use clj-money.test-common))
+  (:use clj-money.test-common
+        clj-money.datomic.datomic-storage))
 
 (deftest save-an-account
   (testing "After I save an account, it appears in the list of all accounts"
     (let [conn (create-empty-db)
-          _ (add-account conn "Checking")
-          accounts (all-accounts (d/db conn))]
+          storage (DatomicStorage. conn)
+          _ (save-account storage "Checking")
+          accounts (get-accounts storage)]
       (is (= 1 (count accounts)))
-      (is (= "Checking" (-> accounts first :account/name)))))
+      (is (= ["Checking"] (map accounts :name)))))
   (testing "After I save two accounts, they are both in the list of all accounts"
     (let [conn (create-empty-db)
           _ (add-accounts conn ["Checking" "Savings"])
           accounts (all-accounts (d/db conn))]
       (is (= 2 (count accounts)))
-      (is (= "Checking" (-> accounts first :account/name)))
-      (is (= "Savings" (-> accounts second :account/name))))))
+      (is (= ["Checking" "Savings"] (map accounts :name))))))
 
 (deftest get-an-account-by-path
   (testing "After I save an account, I can retrieve it by path (name prepened by parents' names)"
