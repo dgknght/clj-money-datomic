@@ -4,9 +4,9 @@
             [clojure.data :refer [diff]]
             [datomic.api :as d :refer [db]])
   (:use clj-money.test-common
-        clj-money.accounts
-        clj-money.budgets
-        clj-money.transactions
+        clj-money.models.accounts
+        clj-money.models.budgets
+        clj-money.models.transactions
         clj-money.reports))
 
 (defn populate-db

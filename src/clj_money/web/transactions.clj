@@ -1,8 +1,8 @@
 (ns clj-money.web.transactions
   (:require [clojure.tools.logging :as log]
             [clojure.set :refer [rename-keys]]
-            [clj-money.transactions :as transactions]
-            [clj-money.accounts :as accounts]
+            [clj-money.models.transactions :as transactions]
+            [clj-money.models.accounts :as accounts]
             [clj-money.common :as common]
             [clj-money.web.layouts :refer :all]
             [clj-money.util :as util]

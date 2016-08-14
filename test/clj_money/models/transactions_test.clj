@@ -1,11 +1,11 @@
-(ns clj-money.transactions-test
+(ns clj-money.models.transactions-test
   (:require [clojure.test :refer :all]
             [clojure.pprint :refer [pprint]]
             [datomic.api :as d :refer [db]]
             [clj-time.core :refer [now]])
   (:use clj-money.test-common
-        clj-money.accounts
-        clj-money.transactions
+        clj-money.models.accounts
+        clj-money.models.transactions
         clj-money.util))
 
 (def account-defs [{:account/name "Checking"

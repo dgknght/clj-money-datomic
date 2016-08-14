@@ -1,8 +1,8 @@
-(ns clj-money.budgets-test
+(ns clj-money.models.budgets-test
   (:require [clojure.test :refer :all]
             [datomic.api :as d :refer [db touch]]
-            [clj-money.budgets :refer :all]
-            [clj-money.accounts :refer :all]
+            [clj-money.models.budgets :refer :all]
+            [clj-money.models.accounts :refer :all]
             [clj-money.common :refer :all])
   (:use clj-money.test-common))
 

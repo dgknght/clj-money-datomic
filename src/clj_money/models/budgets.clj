@@ -1,7 +1,7 @@
-(ns clj-money.budgets
+(ns clj-money.models.budgets
   (:require [datomic.api :as d :refer [transact q db]]
             [clj-money.common :as m :refer :all]
-            [clj-money.accounts :refer :all]
+            [clj-money.models.accounts :refer :all]
             [clj-time.core :as t]
             [clj-time.coerce :as c])
   (:gen-class))

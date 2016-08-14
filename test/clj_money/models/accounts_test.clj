@@ -1,8 +1,8 @@
-(ns clj-money.accounts-test
+(ns clj-money.models.accounts-test
   (:require [datomic.api :as d :refer [db]]
             [clojure.test :refer :all]
             [clojure.tools.logging :as log]
-            [clj-money.accounts :refer :all]
+            [clj-money.models.accounts :refer :all]
             [clj-money.common :refer :all]
             [clj-money.test-common :refer [create-empty-db]])
   (:use clj-money.test-common))

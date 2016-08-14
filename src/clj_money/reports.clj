@@ -1,8 +1,8 @@
 (ns clj-money.reports
   (:use clj-money.common
-        clj-money.accounts
-        clj-money.budgets
-        clj-money.transactions
+        clj-money.models.accounts
+        clj-money.models.budgets
+        clj-money.models.transactions
         clj-money.util
         clojure.set)
   (:require [clojure.string :as string]

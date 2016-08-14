@@ -1,4 +1,4 @@
-(ns clj-money.transactions
+(ns clj-money.models.transactions
   (:require [datomic.api :as d :refer [tempid q db transact pull-many pull]]
             [clojure.tools.logging :as log]
             [clojure.pprint :refer [pprint]]
@@ -7,7 +7,7 @@
             [clj-time.core :as t]
             [clj-time.coerce :as coerce])
   (:use clj-money.common
-        clj-money.accounts
+        clj-money.models.accounts
         [clj-money.util :as util])
   (:gen-class))
 

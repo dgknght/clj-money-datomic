@@ -3,8 +3,8 @@
             [clojure.tools.logging :as log]
             [datomic.api :as d]
             [clj-money.common :as common]
-            [clj-money.accounts :as accounts]
-            [clj-money.transactions :as transactions]
+            [clj-money.models.accounts :as accounts]
+            [clj-money.models.transactions :as transactions]
             [clj-money.util :as util]))
 
 (def schema (load-file "resources/datomic/schema.edn"))

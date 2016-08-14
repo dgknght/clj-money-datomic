@@ -1,4 +1,4 @@
-(ns clj-money.accounts
+(ns clj-money.models.accounts
   (:require [datomic.api :as d :refer [transact q db]]
             [clojure.string :as str]
             [clj-money.common :as m :refer :all]
