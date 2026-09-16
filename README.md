@@ -1,5 +1,7 @@
 # clj-money
 
+This repo has been superseded by [clj-money](https://github.com/dgknght/clj-money), which supports multiple storage strategies including datomic.
+
 This is a web-based implementation of a basic [double-entry accounting system](https://en.wikipedia.org/wiki/Double-entry_bookkeeping_system).
 A basic working knowledge of these accounting principles will be necessary to make sense of the site.
 
